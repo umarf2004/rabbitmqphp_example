@@ -16,8 +16,9 @@ body {
     align-self: center;
     width: 100%;
     max-width: 20rem;
-    max-height: 30 rem;
+    max-height: 30rem;
     padding: 2rem;
+    margin: 23rem;
     background-color: #cccc;
     border-radius: 1rem;
     box-shadow: 0 0 1rem black;
@@ -44,12 +45,40 @@ input:focus {
     background-color: white;
 }
 
+.firstName {
+    display: inline;
+}
+
+.lastName {
+    display: inline;
+}
+
 button {
     width: 100%;
     padding: 1rem;
-    background-color: #7494ec;
+    background-color: #2151d6;
+    color: #eee;
     border-radius: 0.5rem;
     border: none;
     cursor: pointer;
-    font-size: 130%;
+    font-size: 140%;
+    transition: 0.5s;
+}
+
+button:hover {
+    background-color: #6884d3;
+}
+
+p {
+    text-align: center;
+    margin: 1rem;
+}
+
+p a {
+    color: #3257bd;
+    text-decoration: none;
+}
+
+p a:hover {
+    text-decoration: underline;
 }
