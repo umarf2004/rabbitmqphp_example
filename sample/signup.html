@@ -6,15 +6,37 @@
 </head>
 
 <div class="form-box" id="signup-form">
-    <form action="">
+    <form id="signupForm" action="">
         <h2>Signup</h2>
-        <input type="text" name="firstName" placeholder="First Name" required>
-        <input type="text" name="lastName" placeholder="Last Name" required>
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
+        <input id="first_name" type="text" name="firstName" placeholder="First Name" required>
+        <input id="last_name" type="text" name="lastName" placeholder="Last Name" required>
+        <input id="username" type="text" name="username" placeholder="Username" required>
+        <input id="email" type="email" name="email" placeholder="Email" required>
+        <input id="password" type="password" name="password" placeholder="Password" required>
         <button type="submit" name="signup">Sign Up</button>
     </form>
+
+    <script>
+        documen.getElementById("signupForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            var first_name = document.getElementById("first_name").value;
+            var last_name = document.getElementById("last_name").value;
+            var username = document.getElementById("username").value;
+            var email = document.getElementById("email").value;
+            var password = document.getElementById("password").value;
+
+            var request = new XMLHttpRequest();
+
+            request.open("POST", "login.php", true);
+
+            request.setRequestHeader(
+                "Content-Type",
+                "application/x-www-form-urlencoded"
+            );
+        }   
+    </script>
+
 
     <p>Already have an account? <a href="index.html">Login</a></p>
 
