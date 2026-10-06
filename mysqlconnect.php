@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 
-$mydb = new mysqli('127.0.0.1','testUser','12345','testdb');
+$mydb = new mysqli('127.0.0.1', 'auth_app', '12345', 'auth_project');
 
 if ($mydb->errno != 0)
 {
