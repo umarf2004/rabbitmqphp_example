@@ -1,27 +1,37 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Courier New', Courier, monospace;
+    margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 50vh;
+    min-height: 100vh;
     background-color: aliceblue;
     color: rgb(87, 85, 85);
 }
 
 .container {
-    margin: 3rem;
+    width: 90%;
+    max-width: 28rem;
 }
 
 .form-box {
     align-self: center;
-    width: 100%;
-    max-width: 20rem;
-    max-height: 30rem;
     padding: 2rem;
-    margin: 23rem;
     background-color: #cccc;
     border-radius: 1rem;
     box-shadow: 0 0 1rem black;
+}
+
+#login-form {
+    width: 100%;
+}
+
+#signup-form {
+    width: 40%;
 }
 
 h2 {
@@ -31,7 +41,7 @@ h2 {
 
 input {
     width: 100%;
-    padding: 12px;
+    padding: 0.5rem;
     background-color: #eee;
     border-radius: 0.5rem;
     border: none;
