@@ -1,0 +1,68 @@
+<html>
+
+<head>
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+
+<div class="form-box" id="signup-form">
+    <form id="signupForm" action="">
+        <h2>Signup</h2>
+        <input id="first_name" type="text" name="firstName" placeholder="First Name" required>
+        <input id="last_name" type="text" name="lastName" placeholder="Last Name" required>
+        <input id="username" type="text" name="username" placeholder="Username" required>
+        <input id="email" type="email" name="email" placeholder="Email" required>
+        <input id="password" type="password" name="password" placeholder="Password" required>
+        <button type="submit" name="signup">Sign Up</button>
+    </form>
+
+    <script>
+        document.getElementById("signupForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            var first_name = document.getElementById("first_name").value;
+            var last_name = document.getElementById("last_name").value;
+            var username = document.getElementById("username").value;
+            var email = document.getElementById("email").value;
+            var password = document.getElementById("password").value;
+
+            var request = new XMLHttpRequest();
+
+            request.open("POST", "login.php", true);
+
+            request.setRequestHeader(
+                "Content-Type",
+                "application/x-www-form-urlencoded"
+            );
+
+            request.onreadystatechange = function () {
+
+                if (this.readyState == 4 && this.status == 200) {
+                    console.log(this.responseText);
+                }
+            };
+
+            request.send(
+                "type=signup"
+                +
+                "&username=" + encodeURIComponent(username)
+                +
+                "&password=" + encodeURIComponent(password)
+                +
+                "&first_name=" + encodeURIComponent(first_name)
+                +
+                "&last_name=" + encodeURIComponent(last_name)
+                +
+                "&email=" + encodeURIComponent(email)
+            );
+
+
+        }); 
+    </script>
+
+
+    <p>Already have an account? <a href="index.html">Login</a></p>
+
+</div>
+
+</html>

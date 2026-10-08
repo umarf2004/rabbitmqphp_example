@@ -1,0 +1,50 @@
+<html>
+
+<head>
+	<title>Login</title>
+	<link rel="stylesheet" href="login.css">
+</head>
+<script>
+
+	function HandleLoginResponse(response) {
+		var text = JSON.parse(response);
+		//	document.getElementById("textResponse").innerHTML = response+"<p>";	
+		document.getElementById("textResponse").innerHTML = "response: " + text + "<p>";
+	}
+
+	function SendLoginRequest(username, password) {
+		var request = new XMLHttpRequest();
+		request.open("POST", "login.php", true);
+		request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		request.onreadystatechange = function () {
+
+			if ((this.readyState == 4) && (this.status == 200)) {
+				HandleLoginResponse(this.responseText);
+			}
+		}
+		//request.send("type=login&uname="+username+"&pword="+password);
+	}
+</script>
+
+
+
+<body>
+	<div class="container">
+		<div class="form-box" id="login-form">
+			<form action="">
+				<h2>Login</h2>
+				<input type="email" name="email" placeholder="Email" required>
+				<input type="password" name="password" placeholder="Password" required>
+				<button type="submit" name="login">Login</button>
+			</form>
+
+			<p>Don't have an account? <a href="signup.html">Sign Up</a></p>
+
+		</div>
+	</div>
+	<script>
+		//SendLoginRequest("kehoed","12345");
+	</script>
+</body>
+
+</html>
