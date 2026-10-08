@@ -1,42 +1,80 @@
 #!/usr/bin/php
 <?php
+
 require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 require_once('login.php.inc');
 
-function doLogin($username,$password)
-{
-    // lookup username in databas
-    // check password
-    $login = new loginDB();
-    return $login->validateLogin($username,$password);
-    //return false if not valid
-}
-
 function requestProcessor($request)
 {
-  echo "received request".PHP_EOL;
-  var_dump($request);
-  if(!isset($request['type']))
-  {
-    return "ERROR: unsupported message type";
-  }
-  switch ($request['type'])
-  {
-    case "login":
-      return doLogin($request['username'],$request['password']);
-    case "validate_session":
-      return doValidate($request['sessionId']);
-  }
-  return array("returnCode" => '0', 'message'=>"Server received request and processed");
+    echo PHP_EOL;
+    echo "Received request:" . PHP_EOL;
+    print_r($request);
+
+    if (!isset($request["type"])) {
+        return [
+            "success" => false,
+            "message" => "Missing request type"
+        ];
+    }
+
+    try {
+        $db = new loginDB();
+
+        switch ($request["type"]) {
+
+            case "register":
+                return $db->register(
+                    $request["username"] ?? "",
+                    $request["password"] ?? "",
+                    $request["first_name"] ?? null,
+                    $request["last_name"] ?? null,
+                    $request["email"] ?? null
+                );
+
+            case "login":
+                return $db->validateLogin(
+                    $request["username"] ?? "",
+                    $request["password"] ?? ""
+                );
+
+            case "validate_session":
+                return $db->validateSession(
+                    $request["sessionId"] ?? ""
+                );
+
+            case "logout":
+                return $db->logout(
+                    $request["sessionId"] ?? ""
+                );
+
+            default:
+                return [
+                    "success" => false,
+                    "message" => "Unsupported request type"
+                ];
+        }
+    }
+    catch (Exception $e) {
+        echo "ERROR: " . $e->getMessage() . PHP_EOL;
+
+        return [
+            "success" => false,
+            "message" => "Internal server error"
+        ];
+    }
 }
 
-$server = new rabbitMQServer("testRabbitMQ.ini","testServer");
+$server = new rabbitMQServer(
+    "rabbitmq.local.ini",
+    "testServer"
+);
 
-echo "testRabbitMQServer BEGIN".PHP_EOL;
-$server->process_requests('requestProcessor');
-echo "testRabbitMQServer END".PHP_EOL;
-exit();
+echo "Authentication DB listener running..." . PHP_EOL;
+
+$server->process_requests(
+    'requestProcessor'
+);
+
 ?>
-
