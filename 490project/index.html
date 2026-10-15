@@ -30,7 +30,7 @@
 
 <body>
     <div class="container">
-        <div class="form-box" id="loginForm">
+        <div class="form-box" id="login-form">
             <form id="loginForm">
                 <h2>Login</h2>
 
@@ -52,68 +52,72 @@
         </div>
     </div>
 
+
+    <script>
+        document.getElementById("loginForm").addEventListener(
+            "submit",
+            function (event) {
+
+                event.preventDefault();
+                console.log("Login button clicked");
+                const username =
+                    document.getElementById("username").value;
+
+                const password =
+                    document.getElementById("password").value;
+
+                const request = new XMLHttpRequest();
+
+                request.open(
+                    "POST",
+                    "login.php",
+                    true
+                );
+
+                request.setRequestHeader(
+                    "Content-Type",
+                    "application/x-www-form-urlencoded"
+                );
+
+                request.onreadystatechange = function () {
+
+                    if (
+                        this.readyState === 4 &&
+                        this.status === 200
+                    ) {
+                        const response =
+                            JSON.parse(this.responseText);
+
+                        if (response.success) {
+                            window.location.href =
+                                "home.php";
+                        }
+                        else {
+                            document.getElementById(
+                                "loginMessage"
+                            ).textContent =
+                                response.message;
+                        }
+                    }
+                };
+
+                request.send(
+                    "type=login" +
+                    "&username=" +
+                    encodeURIComponent(username) +
+                    "&password=" +
+                    encodeURIComponent(password)
+                );
+            }
+        );
+    </script>
+
     <script>
         //SendLoginRequest("kehoed","12345");
     </script>
+
+
+
 </body>
 
 </html>
-
-<script>
-    document.getElementById("loginForm").addEventListener(
-        "submit",
-        function (event) {
-
-            event.preventDefault();
-
-            const username =
-                document.getElementById("username").value;
-
-            const password =
-                document.getElementById("password").value;
-
-            const request = new XMLHttpRequest();
-
-            request.open(
-                "POST",
-                "login.php",
-                true
-            );
-
-            request.setRequestHeader(
-                "Content-Type",
-                "application/x-www-form-urlencoded"
-            );
-
-            request.onreadystatechange = function () {
-
-                if (
-                    this.readyState === 4 &&
-                    this.status === 200
-                ) {
-                    const response =
-                        JSON.parse(this.responseText);
-
-                    if (response.success) {
-                        window.location.href =
-                            "home.php";
-                    }
-                    else {
-                        document.getElementById(
-                            "loginMessage"
-                        ).textContent =
-                            response.message;
-                    }
-                }
-            };
-
-            request.send(
-                "type=login" +
-                "&username=" +
-                encodeURIComponent(username) +
-                "&password=" +
-                encodeURIComponent(password)
-            );
-        }
-    );
-</script>

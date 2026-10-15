@@ -1,12 +1,12 @@
 <?php
 
-require_once('/var/www/authlib/rabbitMQLib.inc');
-require_once('/var/www/authlib/get_host_info.inc');
+require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
+require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
 
 $type = $_POST["type"] ?? "";
 
 $client = new rabbitMQClient(
-    "/var/www/authlib/rabbitmq.local.ini",
+    "/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini",
     "testServer"
 );
 
@@ -16,8 +16,8 @@ switch ($type)
 
         $request = [
             "type" => "login",
-            "email" =>
-                $_POST["email"] ?? "",
+            "username" =>
+                $_POST["username"] ?? "",
             "password" =>
                 $_POST["password"] ?? ""
         ];

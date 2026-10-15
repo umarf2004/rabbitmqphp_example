@@ -1,7 +1,7 @@
 <?php
 
-require_once('/var/www/authlib/rabbitMQLib.inc');
-require_once('/var/www/authlib/get_host_info.inc');
+require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
+require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
 
 $sessionId =
     $_COOKIE["auth_token"] ?? "";
@@ -9,7 +9,7 @@ $sessionId =
 if ($sessionId !== "") {
 
     $client = new rabbitMQClient(
-        "/var/www/authlib/rabbitmq.local.ini",
+        "/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini",
         "testServer"
     );
 
