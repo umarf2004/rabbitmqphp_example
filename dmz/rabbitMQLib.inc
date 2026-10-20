@@ -40,7 +40,7 @@ class rabbitMQServer
 			$this->routing_key =
 				$this->machine[$server]["ROUTING_KEY"];
 		}
-	}
+	}	
 	function process_message($msg)
 	{
 		// send the ack to clear the item from the queue
@@ -122,6 +122,7 @@ class rabbitMQServer
 
 			$this->conn_queue = new AMQPQueue($channel);
 			$this->conn_queue->setName($this->queue);
+			$this->conn_queue->declare();
 			$this->conn_queue->bind($exchange->getName(),$this->routing_key);
 
 			$this->conn_queue->consume(array($this,'process_message'));
@@ -134,7 +135,7 @@ class rabbitMQServer
 		}
 		catch (Exception $e)
 		{
-			trigger_error("Failed to start request processor: ".$e,E_USER_ERROR);
+			trigger_error("Failed to start request processor: ".$e,E_USER_ERROR); 
 		}
 	}
 }
@@ -174,7 +175,7 @@ class rabbitMQClient
 
 		if (isset($this->machine[$server]["ROUTING_KEY"]))
 		{
-			$this->routing_key =
+			$this->routing_key = 
 				$this->machine[$server]["ROUTING_KEY"];
 		}
 	}
@@ -280,3 +281,4 @@ class rabbitMQClient
 	}
 }
 ?>
+
