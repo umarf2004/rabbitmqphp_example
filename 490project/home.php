@@ -40,29 +40,39 @@ $username = htmlspecialchars(
 ?>
 
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Home</title>
-</head>
+    <html>
+    <head>
+        <title>Home</title>
+    </head>
 
-<body>
+    <body>
 
-<h1>
-    Welcome <?php echo $username; ?>
-</h1>
+        <h1>
+            Welcome <?php echo $username; ?>
+        </h1>
 
-<p>
-    Login successful.
-</p>
+        <form id="stockSearchForm">
+            <input id="stockSymbol" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
 
-<p>
-    Your session was validated through
-    RabbitMQ and the database.
-</p>
+            <button type="submit">
+                Search
+            </button>
 
-<a href="logout.php">
-    Logout
-</a>
+            <p id="searchMessage"></p>
+        </form>
 
-</body>
+        <p>
+            Login successful.
+        </p>
+
+        <p>
+            Your session was validated through
+            RabbitMQ and the database.
+        </p>
+
+        <a href="logout.php">
+            Logout
+        </a>
+
+    </body>
 </html>
