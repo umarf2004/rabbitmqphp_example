@@ -34,30 +34,49 @@
                 "Content-Type",
                 "application/x-www-form-urlencoded"
             );
-
             request.onreadystatechange = function () {
 
-                if (this.readyState == 4 && this.status == 200) {
-                    console.log(this.responseText);
+                if (
+                    this.readyState === 4 &&
+                    this.status === 200
+                ) {
+
+                    const response =
+                        JSON.parse(this.responseText);
+
+                    if (response.success) {
+
+                        alert(
+                            "Registration successful"
+                        );
+
+                        window.location.href =
+                            "index.html";
+                    }
+                    else {
+
+                        alert(response.message);
+                    }
                 }
             };
 
             request.send(
-                "type=signup"
+                "type=register"
                 +
-                "&username=" + encodeURIComponent(username)
+                "&first_name="
                 +
-                "&password=" + encodeURIComponent(password)
-                +
-                "&first_name=" + encodeURIComponent(first_name)
+                encodeURIComponent(first_name)
                 +
                 "&last_name=" + encodeURIComponent(last_name)
                 +
+                "&username=" + encodeURIComponent(username)
+                +
                 "&email=" + encodeURIComponent(email)
+                +
+                "&password=" + encodeURIComponent(password)
             );
 
-
-        }); 
+        });   
     </script>
 
 
