@@ -259,7 +259,9 @@ class loginDB
         $stmt = $this->logindb->prepare(
             "SELECT
                 users.id,
-                users.username
+                users.username,
+                users.first_name,
+                users.last_name
              FROM sessions
              INNER JOIN users
                 ON users.id = sessions.user_id
@@ -288,6 +290,8 @@ class loginDB
             "success" => true,
             "message" => "Session valid",
             "username" => $user["username"]
+            "first_name" => $user["first_name"],
+            "last_name" => $user["first_name"]
         ];
     }
 

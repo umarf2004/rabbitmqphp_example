@@ -21,6 +21,7 @@ $response = $client->send_request([
     "sessionId" => $sessionId
 ]);
 
+
 if (empty($response["success"])) {
 
     setcookie(
@@ -37,6 +38,8 @@ if (empty($response["success"])) {
 $username = htmlspecialchars(
     $response["username"]
 );
+
+$name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($response["last_name"]);
 ?>
 
 <!DOCTYPE html>
@@ -48,7 +51,7 @@ $username = htmlspecialchars(
     <body>
 
         <h1>
-            Welcome <?php echo $username; ?>
+            Welcome <?php echo $name; ?>
         </h1>
 
         <form id="stockSearchForm">
@@ -70,6 +73,10 @@ $username = htmlspecialchars(
             RabbitMQ and the database.
         </p>
 
+        <a href="currency.php">
+            My Currency Wallet
+        </a>
+    <br><br>
         <a href="logout.php">
             Logout
         </a>
