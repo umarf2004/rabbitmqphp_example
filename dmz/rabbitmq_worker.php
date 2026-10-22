@@ -2,9 +2,9 @@
 
 require_once __DIR__ . "/massive_worker.php";
 
-require_once __DIR__ . "/../git/rabbitmqphp_example/path.inc";
-require_once __DIR__ . "/../git/rabbitmqphp_example/get_host_info.inc";
-require_once __DIR__ . "/../git/rabbitmqphp_example/rabbitMQLib.inc";
+require_once __DIR__ . "/../path.inc";
+require_once __DIR__ . "/../get_host_info.inc";
+require_once __DIR__ . "/../rabbitMQLib.inc";
 
 function massiveRequestProcessor($request)
 {
