@@ -1,0 +1,25 @@
+<VirtualHost *:80>
+    ServerName www.490project.com
+    ServerAlias 490project.com
+
+    Redirect permanent / https://www.490project.com/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName www.490project.com
+    ServerAlias 490project.com
+
+    DocumentRoot /var/www/html/490project
+
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/490project/490project.crt
+    SSLCertificateKeyFile /etc/ssl/490project/490project.key
+
+    <Directory /var/www/html/490project>
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+        DirectoryIndex index.html
+    </Directory>
+</VirtualHost>
+
