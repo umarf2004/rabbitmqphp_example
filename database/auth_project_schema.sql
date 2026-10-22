@@ -122,7 +122,7 @@ CREATE TABLE `portfolio_history` (
   KEY `idx_portfolio_user_date` (`user_id`,`recorded_at`),
   CONSTRAINT `portfolio_history_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `portfolio_history_chk_1` CHECK ((`total_value_usd` >= 0))
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -274,9 +274,11 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `calculate_portfolio_value`(
 )
 BEGIN
     DECLARE v_total DECIMAL(18,8) DEFAULT 0;
+    DECLARE v_stock_total DECIMAL(18,8) DEFAULT 0;
     DECLARE v_missing_rates INT DEFAULT 0;
+    DECLARE v_missing_prices INT DEFAULT 0;
 
-    -- Check whether any positive wallet balances lack exchange rates
+    -- Check for missing exchange rates
     SELECT COUNT(*)
     INTO v_missing_rates
     FROM wallets AS w
@@ -295,7 +297,7 @@ BEGIN
         SET MESSAGE_TEXT = 'Missing exchange rates for portfolio valuation';
     END IF;
 
-    -- Calculate the total portfolio value using the latest rates
+    -- Calculate currency wallet value in USD
     SELECT COALESCE(SUM(
         CASE
             WHEN w.currency = 'USD' THEN w.balance
@@ -314,7 +316,33 @@ BEGIN
     FROM wallets AS w
     WHERE w.user_id = p_user_id;
 
-    -- Save the calculated portfolio value
+    -- Check for missing stock prices
+    SELECT COUNT(*)
+    INTO v_missing_prices
+    FROM portfolio_holdings AS ph
+    LEFT JOIN stocks AS s ON ph.stock_id = s.id
+    WHERE ph.user_id = p_user_id
+      AND ph.shares > 0
+      AND (s.id IS NULL OR s.current_price IS NULL);
+
+    IF v_missing_prices > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Missing stock prices for portfolio valuation';
+    END IF;
+
+    -- Calculate total stock holdings value
+    SELECT COALESCE(SUM(
+        ph.shares * s.current_price
+    ), 0)
+    INTO v_stock_total
+    FROM portfolio_holdings AS ph
+    JOIN stocks AS s ON ph.stock_id = s.id
+    WHERE ph.user_id = p_user_id;
+
+    -- Add stock value to currency wallet value
+    SET v_total = v_total + v_stock_total;
+
+    -- Save portfolio value to history
     INSERT INTO portfolio_history (
         user_id,
         total_value_usd
@@ -324,7 +352,7 @@ BEGIN
         v_total
     );
 
-    -- Display the result
+    -- Display portfolio value
     SELECT
         p_user_id AS user_id,
         v_total AS total_portfolio_value_usd;
@@ -696,4 +724,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-22 11:00:06
+-- Dump completed on 2026-10-22 11:20:03
