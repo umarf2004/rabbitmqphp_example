@@ -1,0 +1,10 @@
+# SSH private keys
+ssh_keys
+*.pem
+
+# Local RabbitMQ credentials
+rabbitmq.local.ini
+
+# Environment secrets
+.env
+.env.*

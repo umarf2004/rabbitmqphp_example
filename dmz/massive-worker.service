@@ -1,0 +1,26 @@
+[Unit]
+Description=IT490 Massive API RabbitMQ Worker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=massiveworker
+Group=massiveworker
+
+WorkingDirectory=/opt/it490/massive-worker
+
+EnvironmentFile=/etc/it490/massive.env
+
+ExecStart=/usr/bin/php /opt/it490/massive-worker/rabbitmq_worker.php
+
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
