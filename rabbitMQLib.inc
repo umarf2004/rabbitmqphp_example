@@ -166,7 +166,10 @@ class rabbitMQClient
 		}
 		$this->exchange = $this->machine[$server]["EXCHANGE"];
 		$this->queue = $this->machine[$server]["QUEUE"];
-	}
+                if (isset($this->machine[$server]["ROUTING_KEY"])) {
+                      $this->routing_key =
+                      $this->machine[$server]["ROUTING_KEY"];
+}	}
 
 	function process_response($response)
 	{
