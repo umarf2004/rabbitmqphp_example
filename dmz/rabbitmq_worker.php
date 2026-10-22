@@ -2,30 +2,49 @@
 
 require_once __DIR__ . "/massive_worker.php";
 
-require_once __DIR__ . "/../path.inc";
-require_once __DIR__ . "/../get_host_info.inc";
-require_once __DIR__ . "/rabbitMQLib.inc";
+require_once __DIR__ . "/../git/rabbitmqphp_example/path.inc";
+require_once __DIR__ . "/../git/rabbitmqphp_example/get_host_info.inc";
+require_once __DIR__ . "/../git/rabbitmqphp_example/rabbitMQLib.inc";
 
 function massiveRequestProcessor($request)
 {
     echo "\nReceived Massive API request:\n";
 
-    echo "Type: " . ($request["type"] ?? "missing") . "\n";
-
-    if (($request["type"] ?? "") !== "fetch_stock") {
-        return [
-            "success" => false,
-            "error" => "Unsupported request type"
-        ];
-    }
-
+    $type = $request["type"] ?? "";
     $ticker = $request["ticker"] ?? "";
 
-    echo "Fetching stock: " . $ticker . "\n";
+    echo "Type: " . $type . "\n";
+    echo "Ticker: " . $ticker . "\n";
 
-    $result = fetchStockData($ticker);
+    switch ($type) {
 
-    echo $result["success"]
+        // Retrieve company information
+        case "fetch_stock":
+
+            echo "Fetching company information...\n";
+
+            $result = fetchStockData($ticker);
+
+            break;
+
+        // Retrieve stock price
+        case "fetch_stock_price":
+
+            echo "Fetching stock price...\n";
+
+            $result = fetchStockPrice($ticker);
+
+            break;
+
+        default:
+
+            return [
+                "success" => false,
+                "error" => "Unsupported request type"
+            ];
+    }
+
+    echo !empty($result["success"])
         ? "Massive API request successful\n"
         : "Massive API request failed\n";
 
@@ -35,7 +54,7 @@ function massiveRequestProcessor($request)
 if (in_array("--test", $argv, true)) {
 
     $response = massiveRequestProcessor([
-        "type" => "fetch_stock",
+        "type" => "fetch_stock_price",
         "ticker" => "AAPL"
     ]);
 

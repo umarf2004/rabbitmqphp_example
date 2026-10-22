@@ -70,3 +70,85 @@ function fetchStockData($ticker)
         "fetched_at" => gmdate("Y-m-d\TH:i:s\Z")
     ];
 }
+
+// Retrieve previous trading day's stock price
+function fetchStockPrice($ticker)
+{
+    $apiKey = getenv("MASSIVE_API_KEY");
+
+    if (!$apiKey) {
+        return [
+            "success" => false,
+            "error" => "Massive API key is missing"
+        ];
+    }
+
+    $ticker = strtoupper(trim($ticker));
+
+    if (!preg_match('/^[A-Z0-9.\-]{1,15}$/', $ticker)) {
+        return [
+            "success" => false,
+            "error" => "Invalid stock ticker"
+        ];
+    }
+
+    $url = "https://api.massive.com/v2/aggs/ticker/"
+         . rawurlencode($ticker)
+         . "/prev?adjusted=true";
+
+    $ch = curl_init($url);
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer " . $apiKey,
+            "Accept: application/json"
+        ],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15
+    ]);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        return [
+            "success" => false,
+            "error" => $error
+        ];
+    }
+
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if (
+        $httpCode !== 200 ||
+        !isset($data["results"][0]["c"])
+    ) {
+        return [
+            "success" => false,
+            "http_code" => $httpCode,
+            "error" => $data["error"]
+                ?? "Failed to retrieve stock price"
+        ];
+    }
+
+    $stock = $data["results"][0];
+
+    return [
+	"success" => true,
+	"ticker" => $ticker,
+	"price" => $stock["c"],
+	"open" => $stock["o"] ?? null,
+	"high" => $stock["h"] ?? null,
+	"low" => $stock["l"] ?? null,
+	"volume" => $stock["v"] ?? null,
+	"price_type" => "previous_close",
+	"market_timestamp" => $stock["t"] ?? null,
+	"fetched_at" => gmdate("Y-m-d\TH:i:s\Z")
+    ];
+}
