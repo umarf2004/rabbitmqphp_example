@@ -1,0 +1,312 @@
+<?php
+
+class stockDB
+{
+    private $db;
+
+    public function __construct()
+    {
+        // Use the same database configuration as login.php.inc
+        $configFile = __DIR__ . "/db.local.ini";
+        $config = parse_ini_file($configFile, true);
+
+        if ($config === false || !isset($config["database"])) {
+            throw new Exception("Could not read db.local.ini");
+        }
+
+        $settings = $config["database"];
+
+        $this->db = new mysqli(
+            $settings["HOST"],
+            $settings["USER"],
+            $settings["PASSWORD"],
+            $settings["DATABASE"]
+        );
+
+        if ($this->db->connect_errno) {
+            throw new Exception("Stock database connection failed");
+        }
+
+        $this->db->set_charset("utf8mb4");
+    }
+
+    // Validate and normalize stock ticker symbols
+    private function normalizeTicker($ticker)
+    {
+        if (!is_string($ticker)) {
+            return null;
+        }
+
+        $ticker = strtoupper(trim($ticker));
+
+        // Match the existing stocks.symbol VARCHAR(10) column
+        if (!preg_match('/^[A-Z0-9.\-]{1,10}$/', $ticker)) {
+            return null;
+        }
+
+        return $ticker;
+    }
+    // Retrieve a stock from MySQL and check its cache age
+    public function getCachedStock($ticker)
+    {
+        $ticker = $this->normalizeTicker($ticker);
+
+        if ($ticker === null) {
+            return [
+                "success" => false,
+                "message" => "Invalid stock ticker"
+            ];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT
+                id,
+                symbol,
+                company_name,
+                current_price,
+                last_updated,
+                (last_updated >= NOW() - INTERVAL 24 HOUR) AS is_fresh
+             FROM stocks
+             WHERE symbol = ?"
+        );
+
+        $stmt->bind_param("s", $ticker);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        $stock = $result->fetch_assoc();
+
+        $stmt->close();
+
+        if (!$stock) {
+            return [
+                "success" => true,
+                "ticker" => $ticker,
+                "found" => false,
+                "cached" => false
+            ];
+        }
+
+        return [
+            "success" => true,
+            "ticker" => $ticker,
+            "found" => true,
+            "cached" => true,
+            "fresh" => (bool) $stock["is_fresh"],
+            "stock" => [
+                "id" => (int) $stock["id"],
+                "symbol" => $stock["symbol"],
+                "company_name" => $stock["company_name"],
+                "current_price" => $stock["current_price"],
+                "last_updated" => $stock["last_updated"]
+            ]
+        ];
+    }
+    // Request fresh stock information from the DMZ through RabbitMQ
+    public function fetchStockFromDMZ($ticker)
+    {
+        $ticker = $this->normalizeTicker($ticker);
+
+        if ($ticker === null) {
+            return [
+                "success" => false,
+                "message" => "Invalid stock ticker"
+            ];
+        }
+
+        require_once __DIR__ . "/path.inc";
+        require_once __DIR__ . "/get_host_info.inc";
+        require_once __DIR__ . "/rabbitMQLib.inc";
+
+        try {
+            $client = new rabbitMQClient(
+                __DIR__ . "/rabbitmq.local.ini",
+                "massiveWorker"
+            );
+
+            // Request company information
+            $companyResponse = $client->send_request([
+                "type" => "fetch_stock",
+                "ticker" => $ticker
+            ], 20);
+
+            if (
+                !is_array($companyResponse) ||
+                empty($companyResponse["success"]) ||
+                !isset($companyResponse["data"]["name"])
+            ) {
+                return [
+                    "success" => false,
+                    "message" => "Unable to retrieve company information"
+                ];
+            }
+
+            // Request the previous trading day's closing price
+            $priceResponse = $client->send_request([
+                "type" => "fetch_stock_price",
+                "ticker" => $ticker
+            ], 20);
+
+            if (
+                !is_array($priceResponse) ||
+                empty($priceResponse["success"]) ||
+                !isset($priceResponse["price"]) ||
+                !is_numeric($priceResponse["price"])
+            ) {
+                return [
+                    "success" => false,
+                    "message" => "Unable to retrieve stock price"
+                ];
+            }
+
+            $companyName = trim($companyResponse["data"]["name"]);
+            $price = (float) $priceResponse["price"];
+
+            if (
+                $companyName === "" ||
+                strlen($companyName) > 150 ||
+                !is_finite($price) ||
+                $price <= 0
+            ) {
+                return [
+                    "success" => false,
+                    "message" => "Invalid stock data received from DMZ"
+                ];
+            }
+
+            return [
+                "success" => true,
+                "ticker" => $ticker,
+                "company_name" => $companyName,
+                "current_price" => $price,
+                "price_type" => "previous_close",
+                "fetched_at" => $priceResponse["fetched_at"] ?? null
+            ];
+
+        } catch (Throwable $e) {
+            error_log("Stock DMZ request failed: " . $e->getMessage());
+
+            return [
+                "success" => false,
+                "message" => "Stock data service unavailable"
+            ];
+        }
+    }
+    // Get stock information using MySQL cache and DMZ
+    public function getStock($ticker)
+    {
+        // Check the local MySQL cache first
+        $cached = $this->getCachedStock($ticker);
+
+        if (!$cached["success"]) {
+            return $cached;
+        }
+
+        // Return cached data if it is less than 24 hours old
+        if ($cached["found"] && $cached["fresh"]) {
+            return [
+                "success" => true,
+                "ticker" => $cached["ticker"],
+                "source" => "cache",
+                "stock" => $cached["stock"]
+            ];
+        }
+
+        // Cache is missing or outdated, so request DMZ data
+        $fresh = $this->fetchStockFromDMZ($cached["ticker"]);
+
+        if ($fresh["success"]) {
+		// Save new stocks without overwriting existing simulated prices
+            $saved = $this->saveStockToCache(
+                $fresh["ticker"],
+                $fresh["company_name"],
+                $fresh["current_price"]
+            );
+
+            if (!$saved["success"]) {
+                error_log("Could not cache stock: " . $fresh["ticker"]);
+            }
+            return [
+                "success" => true,
+                "ticker" => $fresh["ticker"],
+                "source" => "dmz",
+                "stock" => [
+                    "symbol" => $fresh["ticker"],
+                    "company_name" => $fresh["company_name"],
+                    "current_price" => $fresh["current_price"]
+                ],
+                "price_type" => $fresh["price_type"]
+            ];
+        }
+
+        // If DMZ fails, return outdated cache data if available
+        if ($cached["found"]) {
+            return [
+                "success" => true,
+                "ticker" => $cached["ticker"],
+                "source" => "stale_cache",
+                "stale" => true,
+                "stock" => $cached["stock"]
+            ];
+        }
+
+        // No cached data and DMZ unavailable
+        return [
+            "success" => false,
+            "ticker" => $cached["ticker"],
+            "message" => "Stock information is currently unavailable"
+        ];
+    }
+    // Save a new stock to MySQL without overwriting existing stocks
+    public function saveStockToCache($ticker, $companyName, $price)
+    {
+        $ticker = $this->normalizeTicker($ticker);
+
+        if (
+            $ticker === null ||
+            !is_string($companyName) ||
+            trim($companyName) === "" ||
+            strlen($companyName) > 150 ||
+            !is_numeric($price) ||
+            !is_finite((float) $price) ||
+            (float) $price <= 0
+        ) {
+            return [
+                "success" => false,
+                "message" => "Invalid stock data"
+            ];
+        }
+
+        $companyName = trim($companyName);
+        $price = (float) $price;
+
+        try {
+            // IGNORE prevents duplicate symbols from being overwritten
+            $stmt = $this->db->prepare(
+                "INSERT IGNORE INTO stocks
+                    (symbol, company_name, current_price)
+                 VALUES (?, ?, ?)"
+            );
+
+            $stmt->bind_param("ssd", $ticker, $companyName, $price);
+            $stmt->execute();
+
+            $inserted = $stmt->affected_rows === 1;
+            $stmt->close();
+
+            return [
+                "success" => true,
+                "ticker" => $ticker,
+                "inserted" => $inserted
+            ];
+
+        } catch (Throwable $e) {
+            error_log("Stock cache save failed: " . $e->getMessage());
+
+            return [
+                "success" => false,
+                "message" => "Unable to save stock data"
+            ];
+        }
+    }
+}

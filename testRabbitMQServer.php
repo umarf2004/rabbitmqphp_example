@@ -5,6 +5,7 @@ require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 require_once('login.php.inc');
+require_once('stockDB.php.inc');
 
 function requestProcessor($request)
 {
@@ -49,6 +50,14 @@ function requestProcessor($request)
                     $request["sessionId"] ?? ""
                 );
 
+	    case "get_stock":
+                $stockDb = new stockDB();
+
+                return $stockDb->getStock(
+                    $request["ticker"] ?? ""
+                );
+
+
             default:
                 return [
                     "success" => false,
@@ -66,15 +75,20 @@ function requestProcessor($request)
     }
 }
 
-$server = new rabbitMQServer(
-    "rabbitmq.local.ini",
-    "testServer"
-);
+// Start the RabbitMQ listener only when this file is run directly.
+// This allows other PHP scripts to include it for local testing.
+if (realpath($_SERVER["SCRIPT_FILENAME"] ?? "") === realpath(__FILE__)) {
 
-echo "Authentication DB listener running..." . PHP_EOL;
+    $server = new rabbitMQServer(
+        "rabbitmq.local.ini",
+        "testServer"
+    );
 
-$server->process_requests(
-    'requestProcessor'
-);
+    echo "Database RabbitMQ listener running..." . PHP_EOL;
+
+    $server->process_requests(
+        'requestProcessor'
+    );
+}
 
 ?>
