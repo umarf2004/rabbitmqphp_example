@@ -54,32 +54,22 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
             Welcome <?php echo $name; ?>
         </h1>
 
-        <form id="stockSearchForm">
-            <input id="stockSymbol" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
-
-            <button type="submit">
-                Search
-            </button>
-
+        <form id="stockSearchForm" action="stocks.php" method="GET">
+        <input id="stockSymbol" name="ticker" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
+            <button type="submit"> Search </button>
             <p id="searchMessage"></p>
         </form>
 
         <p>
             Login successful.
+            Your session was validated through RabbitMQ and the database.
         </p>
 
-        <p>
-            Your session was validated through
-            RabbitMQ and the database.
-        </p>
-
-        <a href="currency.php">
-            My Currency Wallet
-        </a>
-    <br><br>
-        <a href="logout.php">
-            Logout
-        </a>
+        <a href="currency.php">My Currency Wallet</a>
+        <br><br>
+        <a href="portfolio.php"> My Portfolio</a>
+        <br><br>
+        <a href="logout.php">Logout</a>
 
     </body>
 </html>
