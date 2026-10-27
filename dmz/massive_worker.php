@@ -152,3 +152,86 @@ function fetchStockPrice($ticker)
 	"fetched_at" => gmdate("Y-m-d\TH:i:s\Z")
     ];
 }
+
+// Search for stocks by company name or ticker
+function searchStocks($query)
+{
+    $apiKey = getenv("MASSIVE_API_KEY");
+
+    if (!$apiKey) {
+        return [
+            "success" => false,
+            "error" => "Massive API key is missing"
+        ];
+    }
+
+    $query = trim($query);
+
+    if ($query === "" || strlen($query) > 100) {
+        return [
+            "success" => false,
+            "error" => "Invalid search query"
+        ];
+    }
+
+    $url = "https://api.massive.com/v3/reference/tickers"
+         . "?search=" . rawurlencode($query)
+         . "&active=true&limit=20";
+
+    $ch = curl_init($url);
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer " . $apiKey,
+            "Accept: application/json"
+        ],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15
+    ]);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        return [
+            "success" => false,
+            "error" => $error
+        ];
+    }
+
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if ($httpCode !== 200 || !isset($data["results"])) {
+        return [
+            "success" => false,
+            "http_code" => $httpCode,
+            "error" => $data["error"]
+                ?? "Failed to search for stocks"
+        ];
+    }
+
+    $results = [];
+
+    foreach ($data["results"] as $stock) {
+        $results[] = [
+            "ticker" => $stock["ticker"] ?? "",
+            "name" => $stock["name"] ?? "",
+            "market" => $stock["market"] ?? "",
+            "primary_exchange" =>
+                $stock["primary_exchange"] ?? ""
+        ];
+    }
+
+    return [
+        "success" => true,
+        "query" => $query,
+        "results" => $results,
+        "fetched_at" => gmdate("Y-m-d\TH:i:s\Z")
+    ];
+}
