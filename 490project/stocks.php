@@ -22,6 +22,8 @@ $response = $client->send_request
     "sessionId" => $sessionId
 ]);
 
+error_log("STOCKS.PHP: validate_session returned");
+
 if (empty($response["success"])) {
     setcookie("auth_token", "", time() - 3600, "/");
     header("Location: index.html");
