@@ -51,11 +51,19 @@ function requestProcessor($request)
                 );
 
 	    case "get_stock":
-                $stockDb = new stockDB();
+	    case "fetch_stock":
+	    case "search_stock":
+   	    	echo "DEBUG: Starting stock lookup" . PHP_EOL;
 
-                return $stockDb->getStock(
-                    $request["ticker"] ?? ""
-                );
+   		 $stockDb = new stockDB();
+
+    		 $result = $stockDb->getStock(
+       		     $request["ticker"] ?? ""
+    );
+
+    echo "DEBUG: Stock lookup finished" . PHP_EOL;
+
+    return $result;
 
 
             default:
