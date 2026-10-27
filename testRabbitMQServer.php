@@ -34,24 +34,29 @@ function requestProcessor($request)
                 );
 
             case "login":
-    $result = $db->validateLogin(
-        $request["username"] ?? "",
-        $request["password"] ?? ""
-    );
+                $result = $db->validateLogin(
+                    $request["username"] ?? "",
+                    $request["password"] ?? ""
+                );
 
-    echo "LOGIN RESULT: " .
-         (($result["success"] ?? false) ? "SUCCESS" : "FAILED") .
-         PHP_EOL;
+                echo "LOGIN RESULT: " .
+                     (($result["success"] ?? false) ? "SUCCESS" : "FAILED") .
+                     PHP_EOL;
 
-    echo "LOGIN MESSAGE: " .
-         ($result["message"] ?? "No message") .
-         PHP_EOL;
+                echo "LOGIN MESSAGE: " .
+                     ($result["message"] ?? "No message") .
+                     PHP_EOL;
 
-    echo "SESSION CREATED: " .
-         (isset($result["sessionId"]) ? "YES" : "NO") .
-         PHP_EOL;
+                echo "SESSION CREATED: " .
+                     (isset($result["sessionId"]) ? "YES" : "NO") .
+                     PHP_EOL;
 
-    return $result;
+                return $result;
+
+            case "validate_session":
+                return $db->validateSession(
+                    $request["sessionId"] ?? ""
+                );
 
             case "validate_session":
                 return $db->validateSession(
