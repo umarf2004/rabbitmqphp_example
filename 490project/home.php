@@ -62,7 +62,6 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
 
         <p>
             Login successful.
-            Your session was validated through RabbitMQ and the database.
         </p>
 
         <a href="currency.php">My Currency Wallet</a>
@@ -70,6 +69,14 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
         <a href="portfolio.php"> My Portfolio</a>
         <br><br>
         <a href="logout.php">Logout</a>
+
+        <script>
+            document.getElementById("stockSearchForm").addEventListener("submit", function() {
+            
+            let ticker = document.getElementById("stockSymbol").value;
+                document.getElementById("searchMessage").textContent = "Searching for " + ticker + "...";
+            });
+        </script>
 
     </body>
 </html>

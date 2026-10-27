@@ -1,0 +1,85 @@
+<?php
+
+require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
+require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
+
+$sessionId = $_COOKIE["auth_token"] ?? "";
+
+if ($sessionId === "") 
+    {
+        header("Location: index.html");
+        exit;
+    }
+
+$client = new rabbitMQClient
+    (
+        "/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini", "testServer"
+    ); 
+
+$response = $client->send_request
+([
+    "type" => "validate_session",
+    "sessionId" => $sessionId
+]);
+
+error_log("STOCKS.PHP: validate_session returned");
+
+if (empty($response["success"])) {
+    setcookie("auth_token", "", time() - 3600, "/");
+    header("Location: index.html");
+    exit;
+}
+
+
+$ticker = strtoupper(trim($_GET["ticker"] ?? ""));
+
+if ($ticker === "") {
+    header("Location: home.php");
+    exit;
+}
+
+
+$stockResponse = $client->send_request([
+    "type" => "search_stock",
+    "ticker" => $ticker
+]);
+
+?> 
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> Stock Information: <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8');?></title> 
+    </head>
+
+    <body>
+    <h1>Stock Information for <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?> </h1>
+
+    <form action="stocks.php" method="GET">
+        <input
+            type="text"
+            name="ticker"
+            placeholder="Enter stock symbol"
+            value="<?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?>"
+            required
+        >
+
+        <button type="submit">Search</button>
+    </form>
+    
+    <h2>
+        Stock: <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?>
+    </h2>
+
+        <?php
+        if (!empty($stockResponse["success"])) {
+            echo "<p>Stock data received successfully!</p>";
+        } else {
+            $message = $stockResponse["message"] ?? "Stock information unavailable.";
+            echo "<p>" . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . "</p>";
+        }
+        ?>
+
+    <a href="home.php">Back to Dashboard</a>
+</body>
+</html>

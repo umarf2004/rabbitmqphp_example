@@ -1,85 +1,190 @@
+
 <?php
 
-require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
-require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
+require_once __DIR__ . '/layout.php';
 
-$sessionId = $_COOKIE["auth_token"] ?? "";
+site_begin('Stock Browser & Search');
 
-if ($sessionId === "") 
-    {
-        header("Location: index.html");
-        exit;
+?>
+
+<section class="panel">
+    <form class="flex" id="stockForm">
+        <label>
+            Symbol
+            <input
+                id="ticker"
+                value="AAPL"
+                required
+                pattern="[a-zA-Z0-9.\-]{1,15}"
+            >
+        </label>
+
+        <button>View stock</button>
+    </form>
+
+    <p>
+        Try
+        <button type="button" class="quick" data-symbol="MSFT">MSFT</button>
+        <button type="button" class="quick" data-symbol="NVDA">NVDA</button>
+        <button type="button" class="quick" data-symbol="AMZN">AMZN</button>
+    </p>
+</section>
+
+
+<section class="panel">
+    <h2>Company details</h2>
+    <div id="company">Search for a stock.</div>
+</section>
+
+
+<section class="panel">
+    <h2>Simulation quote</h2>
+    <p id="quote">—</p>
+    <p class="note">
+        Data may be previous-day or delayed; check the timestamp before trading.
+    </p>
+</section>
+
+
+<section class="panel">
+    <h2>Stock price history</h2>
+    <div id="chart"></div>
+    <div id="historyInfo"></div>
+</section>
+
+
+<section class="panel">
+    <h2>Search company names</h2>
+
+    <form class="flex" id="searchForm">
+        <label>
+            Company name
+            <input id="searchText" value="Apple">
+        </label>
+
+        <button>Search companies</button>
+    </form>
+
+    <div id="searchResults"></div>
+</section>
+
+
+<script src="api.js"></script>
+<script src="charts.js"></script>
+
+<script>
+
+async function showStock(symbol) {
+    $('company').textContent = 'Loading company details...';
+    $('quote').textContent = 'Loading quote...';
+    $('chart').textContent = 'Loading history...';
+
+    const requests = await Promise.allSettled([
+        rpc('fetch_stock', { ticker: symbol }),
+        rpc('get_stock_price', { ticker: symbol }),
+        rpc('fetch_stock_history', { ticker: symbol })
+    ]);
+
+    const [companyResult, quoteResult, historyResult] = requests;
+
+    if (companyResult.status === 'fulfilled') {
+        const company = companyResult.value.data || companyResult.value;
+
+        const details = Object.entries(company)
+            .filter(([, value]) =>
+                ['string', 'number'].includes(typeof value)
+            )
+            .map(([name, value]) => ({ name, value }));
+
+        renderTable(
+            'company',
+            [
+                ['Field', 'name'],
+                ['Value', 'value']
+            ],
+            details
+        );
+    } else {
+        showError('company', companyResult.reason);
     }
 
-$client = new rabbitMQClient
-    (
-        "/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini", "testServer"
-    ); 
 
-$response = $client->send_request
-([
-    "type" => "validate_session",
-    "sessionId" => $sessionId
-]);
+    if (quoteResult.status === 'fulfilled') {
+        const priceInfo = quoteResult.value;
 
-error_log("STOCKS.PHP: validate_session returned");
+        $('quote').textContent =
+            `${formatMoney(priceInfo.price)} — ` +
+            `${priceInfo.price_type || 'quote'} — ` +
+            `${priceInfo.as_of || 'timestamp unavailable'}`;
 
-if (empty($response["success"])) {
-    setcookie("auth_token", "", time() - 3600, "/");
-    header("Location: index.html");
-    exit;
+    } else {
+        showError('quote', quoteResult.reason);
+    }
+
+
+    if (historyResult.status === 'fulfilled') {
+        const dailyPrices = historyResult.value.history || [];
+
+        lineChart(
+            $('chart'),
+            dailyPrices,
+            'date',
+            'close',
+            'Stock closing price'
+        );
+
+        $('historyInfo').textContent =
+            `${dailyPrices.length} data points`;
+
+    } else {
+        showError('chart', historyResult.reason);
+    }
 }
 
 
-$ticker = strtoupper(trim($_GET["ticker"] ?? ""));
+$('stockForm').addEventListener('submit', event => {
+    event.preventDefault();
 
-if ($ticker === "") {
-    header("Location: home.php");
-    exit;
-}
+    showStock($('ticker').value.toUpperCase())
+        .catch(error => showError('company', error));
+});
 
 
-$stockResponse = $client->send_request([
-    "type" => "search_stock",
-    "ticker" => $ticker
-]);
+document.querySelectorAll('.quick').forEach(button => {
+    button.addEventListener('click', () => {
+        $('ticker').value = button.dataset.symbol;
+        showStock(button.dataset.symbol);
+    });
+});
 
-?> 
 
-<!DOCTYPE html>
-<html>
-    <head>
-        <title> Stock Information: <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8');?></title> 
-    </head>
+$('searchForm').addEventListener('submit', async event => {
+    event.preventDefault();
 
-    <body>
-    <h1>Stock Information for <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?> </h1>
+    try {
+        const searchReply = await rpc('search_stocks', {
+            query: $('searchText').value
+        });
 
-    <form action="stocks.php" method="GET">
-        <input
-            type="text"
-            name="ticker"
-            placeholder="Enter stock symbol"
-            value="<?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?>"
-            required
-        >
+        renderTable(
+            'searchResults',
+            [
+                ['Ticker', 'symbol'],
+                ['Company', 'name']
+            ],
+            searchReply.results || []
+        );
 
-        <button type="submit">Search</button>
-    </form>
-    
-    <h2>
-        Stock: <?php echo htmlspecialchars($ticker, ENT_QUOTES, 'UTF-8'); ?>
-    </h2>
+    } catch (error) {
+        showError('searchResults', error);
+    }
+});
 
-        <?php
-        if (!empty($stockResponse["success"])) {
-            echo "<p>Stock data received successfully!</p>";
-        } else {
-            $message = $stockResponse["message"] ?? "Stock information unavailable.";
-            echo "<p>" . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . "</p>";
-        }
-        ?>
 
-    <a href="home.php">Back to Dashboard</a>
-</body>
-</html>
+showStock('AAPL')
+    .catch(error => showError('company', error));
+
+</script>
+
+<?php site_end(); ?>
+
