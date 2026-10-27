@@ -40,7 +40,7 @@ if ($ticker === "") {
 
 
 $stockResponse = $client->send_request([
-    "type" => "get_stock",
+    "type" => "search_stock",
     "ticker" => $ticker
 ]);
 
