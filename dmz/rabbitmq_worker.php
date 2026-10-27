@@ -18,6 +18,17 @@ function massiveRequestProcessor($request)
 
     switch ($type) {
 
+
+        case "search_stocks":
+
+            echo "Searching for stocks...\n";
+
+            $query = $request["query"] ?? "";
+
+            $result = searchStocks($query);
+
+    	    break;
+
         // Retrieve company information
         case "fetch_stock":
 
@@ -29,7 +40,7 @@ function massiveRequestProcessor($request)
 
         // Retrieve stock price
         case "fetch_stock_price":
-
+	case "get_stock_price":
             echo "Fetching stock price...\n";
 
             $result = fetchStockPrice($ticker);
