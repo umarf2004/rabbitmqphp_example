@@ -19,7 +19,6 @@ site_begin('Stock Browser & Search');
                 required
             >
         </label>
-
         <button type="submit" id="stockSearchButton">Search</button>
     </form>
 

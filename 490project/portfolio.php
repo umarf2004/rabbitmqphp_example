@@ -40,7 +40,6 @@ if (empty($response["success"])) {
         <h1>My Portfolio </h1> 
 
         <h2>Portfolio Overview  </h2> 
-
         <p>Total Portfolio Value: --</p>
         <p>Available Cash: --</p>
         <p>Total Invested Value: --</p>

@@ -31,7 +31,6 @@ function auth_state(): ?array
         'type' => 'validate_session',
         'sessionId' => $sessionKey
     ]);
-
     if (!is_array($sessionCheck) || empty($sessionCheck['success'])) {
         return null;
     }
