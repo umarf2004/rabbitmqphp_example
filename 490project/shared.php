@@ -1,5 +1,5 @@
 <?php
-const LIBDIR = '/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini';
+const LIBDIR = '/home/umarf/git/rabbitmqphp_example';
 function mq_client(string $section): rabbitMQClient
 {
     static $libraryReady = false;

@@ -14,7 +14,7 @@ function site_begin(string $title): void
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="$csrfToken">
-    <title>$pageTitle — Virtual Trading</title>
+    <title>$pageTitle</title>
     <link rel="stylesheet" href="app.css">
 </head>
 <body>

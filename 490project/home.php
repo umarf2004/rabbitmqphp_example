@@ -1,7 +1,9 @@
 <?php
-
+require_once __DIR__ . '/layout.php';
 require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
 require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
+
+site_begin('Home');
 
 $sessionId =
     $_COOKIE["auth_token"] ?? "";

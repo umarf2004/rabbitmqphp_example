@@ -1,186 +1,330 @@
 <?php
 require_once __DIR__ . '/layout.php';
-
 site_begin('Stock Browser & Search');
 
 ?>
 
 <section class="panel">
+    <h2>Search Stocks</h2>
+
     <form class="flex" id="stockForm">
         <label>
-            Symbol
+            Stock Symbol
             <input
                 id="ticker"
-                value="AAPL"
-                required
+                type="text"
+                placeholder="Enter symbol (AAPL, TSLA, MSFT)"
+                maxlength="15"
                 pattern="[a-zA-Z0-9.\-]{1,15}"
+                required
             >
         </label>
 
-        <button>View stock</button>
+        <button type="submit" id="stockSearchButton">Search</button>
     </form>
 
-    <p>
-        Try
+    <p class="note">Or try one of these stocks:</p>
+
+    <div class="flex">
+        <button type="button" class="quick" data-symbol="AAPL">AAPL</button>
         <button type="button" class="quick" data-symbol="MSFT">MSFT</button>
         <button type="button" class="quick" data-symbol="NVDA">NVDA</button>
-        <button type="button" class="quick" data-symbol="AMZN">AMZN</button>
-    </p>
+        <button type="button" class="quick" data-symbol="TSLA">TSLA</button>
+    </div>
 </section>
 
-
 <section class="panel">
-    <h2>Company details</h2>
-    <div id="company">Search for a stock.</div>
+    <h2>Company Details</h2>
+    <div id="company">Enter a stock symbol to view company information.</div>
 </section>
 
-
 <section class="panel">
-    <h2>Simulation quote</h2>
-    <p id="quote">—</p>
-    <p class="note">
-        Data may be previous-day or delayed; check the timestamp before trading.
-    </p>
+    <h2>Stock Price</h2>
+    <p id="quote">Search for a stock to view its price.</p>
+    <p class="note">Prices may be delayed or from the previous trading day.</p>
 </section>
 
-
 <section class="panel">
-    <h2>Stock price history</h2>
-    <div id="chart"></div>
-    <div id="historyInfo"></div>
+    <h2>Stock Price History</h2>
+    <div id="chart">Search for a stock to view historical prices.</div>
+    <p id="historyInfo" class="note"></p>
 </section>
 
-
 <section class="panel">
-    <h2>Search company names</h2>
+    <h2>Search by Company Name</h2>
 
     <form class="flex" id="searchForm">
         <label>
-            Company name
-            <input id="searchText" value="Apple">
+            Company Name
+            <input
+                id="searchText"
+                type="text"
+                placeholder="Example: Apple"
+                required
+            >
         </label>
 
-        <button>Search companies</button>
+        <button type="submit" id="companySearchButton">Search Companies</button>
     </form>
 
     <div id="searchResults"></div>
 </section>
 
-
 <script src="api.js"></script>
 <script src="charts.js"></script>
-
 <script>
 
+let stockSearchRunning = false;
+
+function validStockSymbol(symbol) {
+    return /^[A-Z0-9.\-]{1,15}$/.test(symbol);
+}
+
+function updateStockUrl(symbol) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('ticker', symbol);
+    window.history.replaceState({}, '', currentUrl);
+}
+
+function setSearchButtons(disabled) {
+    $('stockSearchButton').disabled = disabled;
+    $('companySearchButton').disabled = disabled;
+
+    document.querySelectorAll('.quick').forEach(button => {
+        button.disabled = disabled;
+    });
+}
+
 async function showStock(symbol) {
-    $('company').textContent = 'Loading company details...';
-    $('quote').textContent = 'Loading quote...';
-    $('chart').textContent = 'Loading history...';
+    if (stockSearchRunning) return;
 
-    const requests = await Promise.allSettled([
-        rpc('fetch_stock', { ticker: symbol }),
-        rpc('get_stock_price', { ticker: symbol }),
-        rpc('fetch_stock_history', { ticker: symbol })
-    ]);
+    const ticker = String(symbol).trim().toUpperCase();
 
-    const [companyResult, quoteResult, historyResult] = requests;
-
-    if (companyResult.status === 'fulfilled') {
-        const company = companyResult.value.data || companyResult.value;
-
-        const details = Object.entries(company)
-            .filter(([, value]) =>
-                ['string', 'number'].includes(typeof value)
-            )
-            .map(([name, value]) => ({ name, value }));
-
-        renderTable(
-            'company',
-            [
-                ['Field', 'name'],
-                ['Value', 'value']
-            ],
-            details
-        );
-    } else {
-        showError('company', companyResult.reason);
+    if (!validStockSymbol(ticker)) {
+        $('company').textContent = 'Please enter a valid stock symbol.';
+        return;
     }
 
+    stockSearchRunning = true;
+    setSearchButtons(true);
+    $('ticker').value = ticker;
+    updateStockUrl(ticker);
 
-    if (quoteResult.status === 'fulfilled') {
-        const priceInfo = quoteResult.value;
+    $('company').textContent = 'Loading company information...';
+    $('quote').textContent = 'Loading stock price...';
+    $('chart').textContent = 'Loading price history...';
+    $('historyInfo').textContent = '';
 
-        $('quote').textContent =
-            `${formatMoney(priceInfo.price)} — ` +
-            `${priceInfo.price_type || 'quote'} — ` +
-            `${priceInfo.as_of || 'timestamp unavailable'}`;
+    try {
+        // Send RabbitMQ requests one at a time.
 
-    } else {
-        showError('quote', quoteResult.reason);
-    }
+        try {
+            const companyReply = await rpc('fetch_stock', {
+                ticker: ticker
+            });
 
+            const companyInfo = companyReply.data || companyReply;
 
-    if (historyResult.status === 'fulfilled') {
-        const dailyPrices = historyResult.value.history || [];
+            const fieldNames = {
+                ticker: 'Stock Symbol',
+                name: 'Company Name',
+                market: 'Market',
+                locale: 'Country',
+                primary_exchange: 'Primary Exchange',
+                type: 'Security Type',
+                currency_name: 'Currency',
+                cik: 'SEC CIK Number',
+                composite_figi: 'Composite FIGI',
+                share_class_figi: 'Share Class FIGI',
+                list_date: 'Listing Date',
+                market_cap: 'Market Capitalization',
+                description: 'Company Description',
+                homepage_url: 'Company Website',
+                total_employees: 'Total Employees',
+                sic_description: 'Industry',
+                sic_code: 'Industry Code'
+            };
 
-        lineChart(
-            $('chart'),
-            dailyPrices,
-            'date',
-            'close',
-            'Stock closing price'
-        );
+            const companyDetails = Object.entries(companyInfo)
+                .filter(([, value]) => {
+                    return typeof value === 'string' ||
+                           typeof value === 'number';
+                })
+                .map(([field, value]) => {
+                    const displayName = fieldNames[field] ||
+                        field.replace(/_/g, ' ')
+                             .replace(/\b\w/g, letter => letter.toUpperCase());
 
-        $('historyInfo').textContent =
-            `${dailyPrices.length} data points`;
+                    let displayValue = value;
 
-    } else {
-        showError('chart', historyResult.reason);
+                    if (field === 'currency_name' || field === 'locale') {
+                        displayValue = String(value).toUpperCase();
+                    }
+
+                    if (field === 'market') {
+                        displayValue = String(value).replace(
+                            /\b\w/g,
+                            letter => letter.toUpperCase()
+                        );
+                    }
+
+                    return {
+                        field: displayName,
+                        value: displayValue
+                    };
+                });
+
+            renderTable(
+                'company',
+                [
+                    ['Company Detail', 'field'],
+                    ['Information', 'value']
+                ],
+                companyDetails
+            );
+
+        } catch (error) {
+            showError('company', error);
+        }
+
+        try {
+            const priceReply = await rpc('get_stock_price', {
+                ticker: ticker
+            });
+
+            const stockPrice = priceReply.price;
+            const priceType = priceReply.price_type || 'quote';
+            const priceTime =
+                priceReply.as_of ||
+                priceReply.market_timestamp ||
+                'Timestamp unavailable';
+
+            $('quote').textContent =
+                `${formatMoney(stockPrice)} — ${priceType} — ${priceTime}`;
+
+        } catch (error) {
+            showError('quote', error);
+        }
+
+        try {
+            const historyReply = await rpc('fetch_stock_history', {
+                ticker: ticker
+            });
+
+            const stockHistory = historyReply.history || [];
+
+            if (!stockHistory.length) {
+                $('chart').textContent = 'No historical prices available.';
+                $('historyInfo').textContent = '';
+            } else if (typeof lineChart === 'function') {
+                lineChart(
+                    $('chart'),
+                    stockHistory,
+                    'date',
+                    'close',
+                    'Stock Closing Price'
+                );
+
+                $('historyInfo').textContent =
+                    `${stockHistory.length} historical price points`;
+            } else {
+                $('chart').textContent =
+                    'Chart display is unavailable. Check charts.js.';
+            }
+
+        } catch (error) {
+            showError('chart', error);
+        }
+
+    } finally {
+        stockSearchRunning = false;
+        setSearchButtons(false);
     }
 }
 
-
-$('stockForm').addEventListener('submit', event => {
+$('stockForm').addEventListener('submit', function (event) {
     event.preventDefault();
 
-    showStock($('ticker').value.toUpperCase())
-        .catch(error => showError('company', error));
+    const enteredSymbol = $('ticker').value.trim().toUpperCase();
+
+    if (!validStockSymbol(enteredSymbol)) {
+        $('company').textContent = 'Please enter a valid stock symbol.';
+        return;
+    }
+
+    showStock(enteredSymbol);
 });
 
-
 document.querySelectorAll('.quick').forEach(button => {
-    button.addEventListener('click', () => {
-        $('ticker').value = button.dataset.symbol;
-        showStock(button.dataset.symbol);
+    button.addEventListener('click', function () {
+        const selectedSymbol = button.dataset.symbol;
+        $('ticker').value = selectedSymbol;
+        showStock(selectedSymbol);
     });
 });
 
-
-$('searchForm').addEventListener('submit', async event => {
+$('searchForm').addEventListener('submit', async function (event) {
     event.preventDefault();
+
+    if (stockSearchRunning) return;
+
+    const companyName = $('searchText').value.trim();
+
+    if (!companyName) {
+        $('searchResults').textContent = 'Enter a company name.';
+        return;
+    }
+
+    stockSearchRunning = true;
+    setSearchButtons(true);
+    $('searchResults').textContent = 'Searching companies...';
 
     try {
         const searchReply = await rpc('search_stocks', {
-            query: $('searchText').value
+            query: companyName
         });
 
-        renderTable(
-            'searchResults',
-            [
-                ['Ticker', 'symbol'],
-                ['Company', 'name']
-            ],
-            searchReply.results || []
-        );
+        const matches = (searchReply.results || []).map(stock => ({
+            ticker: stock.ticker || stock.symbol || '—',
+            name: stock.name || stock.company_name || 'Unknown company'
+        }));
+
+        if (matches.length === 0) {
+            $('searchResults').textContent = 'No companies found.';
+        } else {
+            renderTable(
+                'searchResults',
+                [
+                    ['Ticker', 'ticker'],
+                    ['Company', 'name']
+                ],
+                matches
+            );
+        }
 
     } catch (error) {
         showError('searchResults', error);
+    } finally {
+        stockSearchRunning = false;
+        setSearchButtons(false);
     }
 });
 
+// Only load a stock when a ticker is provided in the URL.
 
-showStock('AAPL')
-    .catch(error => showError('company', error));
+const pageParams = new URLSearchParams(window.location.search);
+const tickerFromHome = pageParams.get('ticker');
+
+if (tickerFromHome) {
+    const startingSymbol = tickerFromHome.trim().toUpperCase();
+
+    if (validStockSymbol(startingSymbol)) {
+        $('ticker').value = startingSymbol;
+        showStock(startingSymbol).catch(error => showError('company', error));
+    } else {
+        $('company').textContent = 'Invalid stock symbol in URL.';
+    }
+}
 
 </script>
 
