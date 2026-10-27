@@ -74,7 +74,6 @@ function renderTable(id, columns, rows) {
         columns.forEach(([, field]) => tableRow.append(td(record[field])));
         tableBody.append(tableRow);
     });
-
     table.append(tableBody);
     mount.append(table);
 }

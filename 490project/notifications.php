@@ -171,7 +171,6 @@ async function loadNotifications() {
         showError('historyStatus', error);
     }
 }
-
 $('reloadNotifications').addEventListener('click', loadNotifications);
 readEmailPreferences();
 loadNotifications();

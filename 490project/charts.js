@@ -25,7 +25,6 @@ function lineChart(container, rows, xKey, yKey, label = 'Value') {
         65 + (pointsWithValues.length === 1 ? 0 : (index / (pointsWithValues.length - 1)) * 610),
         220 - ((entry.y - lowest) / range) * 165
     ]);
-
     const line = document.createElementNS(svgNamespace, 'polyline');
     line.setAttribute('points', coordinates.map(pair => pair.join(',')).join(' '));
     line.setAttribute('fill', 'none');
