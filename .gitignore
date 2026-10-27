@@ -8,3 +8,4 @@ rabbitmq.local.ini
 # Environment secrets
 .env
 .env.*
+/csrf.key
