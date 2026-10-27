@@ -1,0 +1,158 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui,Arial,sans-serif;
+    background: #f5f7fb;
+    color: #192536;
+    margin: 0;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: #12203a;
+    color: white;
+}
+
+header small {
+    opacity: .8;
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+    background: white;
+    padding: .85rem 1.5rem;
+    border-bottom: 1px solid #dde4ef;
+}
+
+nav a {
+    color: #174b97;
+    text-decoration: none;
+    font-size: .9rem;
+}
+
+main {
+    max-width: 1120px;
+    margin: 2rem auto;
+    padding: 0 1rem 3rem;
+}
+
+h1 {
+    font-size: 1.8rem;
+}
+
+h2 {
+    font-size: 1.2rem;
+}
+
+.panel {
+    background: white;
+    padding: 1.3rem;
+    border: 1px solid #e0e6ee;
+    border-radius: 12px;
+    margin: 1.1rem 0;
+}
+
+.flex {
+    display: flex;
+    gap: .8rem;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(210px,1fr));
+    gap: 1rem;
+}
+
+.metric {
+    background: white;
+    border: 1px solid #e2e7ef;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.metric strong {
+    display: block;
+    font-size: 1.5rem;
+    margin-top: .4rem;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+
+input,select,button {
+    font: inherit;
+    padding: .65rem;
+    border-radius: 7px;
+    border: 1px solid #aebccd;
+}
+
+button {
+    background: #2357a2;
+    color: white;
+    border: 0;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.note {
+    color: #566274;
+}
+
+.message {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    background: white;
+}
+
+td,th {
+    border-bottom: 1px solid #e2e7ef;
+    padding: .7rem;
+    text-align: left;
+}
+
+th {
+    background: #eef3fa;
+}
+
+.scroll {
+    overflow: auto;
+}
+
+.chart {
+    width: 100%;
+    max-height: 350px;
+    background: #fff;
+    border: 1px solid #e0e6ee;
+}
+
+footer {
+    text-align: center;
+    color: #64748b;
+    padding: 1rem;
+}
+
+a {
+    color: #1b5da8;
+}
+

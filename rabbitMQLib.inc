@@ -190,7 +190,7 @@ class rabbitMQClient
 		return false;
 	}
 
-	function send_request($message)
+	function send_request($message, $timeoutSeconds = null)
 	{
 		$uid = uniqid();
 
@@ -203,6 +203,11 @@ class rabbitMQClient
 			$params['login'] = $this->USER;
 			$params['password'] = $this->PASSWORD;
 			$params['vhost'] = $this->VHOST;
+
+			if ($timeoutSeconds !== null) {
+				$params['read_timeout'] = $timeoutSeconds;
+				$params['connect_timeout'] = $timeoutSeconds;
+			}
 
 			$conn = new AMQPConnection($params);
 			$conn->connect();
@@ -228,10 +233,16 @@ class rabbitMQClient
 
 			$response = $this->response_queue[$uid];
 			unset($this->response_queue[$uid]);
+
+			$conn->disconnect();
+
 			return $response;
 		}
 		catch(Exception $e)
 		{
+			if ($timeoutSeconds !== null) {
+				throw $e;
+			}
 			die("failed to send message to exchange: ". $e->getMessage()."\n");
 		}
 	}

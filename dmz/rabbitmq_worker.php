@@ -18,8 +18,21 @@ function massiveRequestProcessor($request)
 
     switch ($type) {
 
+        // Search for stocks
+        case "search_stocks":
+
+            echo "Searching for stocks...\n";
+
+            $query = $request["query"] ?? "";
+
+            $result = searchStocks($query);
+
+            break;
+
+
         // Retrieve company information
         case "fetch_stock":
+        case "get_stock":
 
             echo "Fetching company information...\n";
 
@@ -27,14 +40,66 @@ function massiveRequestProcessor($request)
 
             break;
 
+
         // Retrieve stock price
         case "fetch_stock_price":
+        case "get_stock_price":
 
             echo "Fetching stock price...\n";
 
             $result = fetchStockPrice($ticker);
 
             break;
+
+
+        // Retrieve historical stock prices
+        case "fetch_stock_history":
+
+            echo "Fetching stock history...\n";
+
+            $result = [
+                "success" => false,
+                "error" => "Stock history is not implemented yet"
+            ];
+
+            break;
+
+        // Retrieve currency exchange rates
+        case "get_fx_rate":
+
+            echo "Fetching currency exchange rate...\n";
+
+            $result = [
+                "success" => false,
+                "error" => "Currency exchange rates are not implemented yet"
+            ];
+
+            break;
+
+        // Retrieve historical currency exchange rates
+        case "get_fx_history":
+
+            echo "Fetching currency exchange history...\n";
+
+            $result = [
+                "success" => false,
+                "error" => "Currency exchange history is not implemented yet"
+            ];
+
+            break;
+
+        // Retrieve stock news
+        case "get_news":
+
+            echo "Fetching stock news...\n";
+
+            $result = [
+                "success" => false,
+                "error" => "Stock news is not implemented yet"
+            ];
+
+            break;
+
 
         default:
 

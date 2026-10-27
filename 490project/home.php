@@ -1,7 +1,9 @@
 <?php
-
+require_once __DIR__ . '/layout.php';
 require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
 require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
+
+site_begin('Home');
 
 $sessionId =
     $_COOKIE["auth_token"] ?? "";
@@ -54,13 +56,9 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
             Welcome <?php echo $name; ?>
         </h1>
 
-        <form id="stockSearchForm">
-            <input id="stockSymbol" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
-
-            <button type="submit">
-                Search
-            </button>
-
+        <form id="stockSearchForm" action="stocks.php" method="GET">
+        <input id="stockSymbol" name="ticker" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
+            <button type="submit"> Search </button>
             <p id="searchMessage"></p>
         </form>
 
@@ -68,18 +66,19 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
             Login successful.
         </p>
 
-        <p>
-            Your session was validated through
-            RabbitMQ and the database.
-        </p>
+        <a href="currency.php">My Currency Wallet</a>
+        <br><br>
+        <a href="portfolio.php"> My Portfolio</a>
+        <br><br>
+        <a href="logout.php">Logout</a>
 
-        <a href="currency.php">
-            My Currency Wallet
-        </a>
-    <br><br>
-        <a href="logout.php">
-            Logout
-        </a>
+        <script>
+            document.getElementById("stockSearchForm").addEventListener("submit", function() {
+            
+            let ticker = document.getElementById("stockSymbol").value;
+                document.getElementById("searchMessage").textContent = "Searching for " + ticker + "...";
+            });
+        </script>
 
     </body>
 </html>
