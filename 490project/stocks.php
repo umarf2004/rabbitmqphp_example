@@ -1,6 +1,4 @@
-
 <?php
-
 require_once __DIR__ . '/layout.php';
 
 site_begin('Stock Browser & Search');
