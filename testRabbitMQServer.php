@@ -39,6 +39,25 @@ function requestProcessor($request)
     		echo "DEBUG LOGIN: success = " . (($result["success"] ?? false) ? "YES" : "NO") . PHP_EOL;
     		return $result;
 
+                echo "LOGIN RESULT: " .
+                     (($result["success"] ?? false) ? "SUCCESS" : "FAILED") .
+                     PHP_EOL;
+
+                echo "LOGIN MESSAGE: " .
+                     ($result["message"] ?? "No message") .
+                     PHP_EOL;
+
+                echo "SESSION CREATED: " .
+                     (isset($result["sessionId"]) ? "YES" : "NO") .
+                     PHP_EOL;
+
+                return $result;
+
+            case "validate_session":
+                return $db->validateSession(
+                    $request["sessionId"] ?? ""
+                );
+
             case "validate_session":
     		$result = $db->validateSession(
         		$request["sessionId"] ?? ""
