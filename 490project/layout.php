@@ -6,7 +6,6 @@ function site_begin(string $title): void
     $csrfToken = esc(csrf_for($currentUser['token']));
     $displayName = esc($currentUser['username']);
     $pageTitle = esc($title);
-
     echo <<<HTML
 <!doctype html>
 <html lang="en">
@@ -28,7 +27,6 @@ function site_begin(string $title): void
 <main><h1>$pageTitle</h1>
 HTML;
 }
-
 function site_end(): void
 {
     echo '</main><footer>For IT490 Project only/No real money trading.</footer></body></html>';
