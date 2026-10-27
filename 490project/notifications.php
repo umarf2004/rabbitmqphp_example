@@ -1,6 +1,6 @@
 <?php require_once __DIR__.'/layout.php';site_begin('Notifications'); ?>
 
-<section class="panel"><button id="reload">Refresh messages</button><p class="note">This page displays stored notifications. A phone/text delivery worker is also needed if required by your instructor.</p><p id="status"></p><div id="list"></div>
+<section class="panel"><button id="reload">Refresh messages</button><p class="note">This page displays stored notifications.</p><p id="status"></p><div id="list"></div>
 </section>
 
 
