@@ -35,15 +35,20 @@ function requestProcessor($request)
                 );
 
             case "login":
-                return $db->validateLogin(
-                    $request["username"] ?? "",
-                    $request["password"] ?? ""
-                );
+                $result = $db->validateLogin($request["username"], $request["password"]);
+    		echo "DEBUG LOGIN: success = " . (($result["success"] ?? false) ? "YES" : "NO") . PHP_EOL;
+    		return $result;
 
             case "validate_session":
-                return $db->validateSession(
-                    $request["sessionId"] ?? ""
-                );
+    		$result = $db->validateSession(
+        		$request["sessionId"] ?? ""
+    		);
+
+    		echo "DEBUG SESSION: success = "
+        		. (($result["success"] ?? false) ? "YES" : "NO")
+        		. PHP_EOL;
+
+    		return $result;
 
             case "logout":
                 return $db->logout(
