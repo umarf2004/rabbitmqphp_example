@@ -61,7 +61,7 @@ try {
         'get_news' => ['symbols'],
         'get_portfolio' => [],
         'get_wallets' => [],
-        'add_virtual_funds' => ['currency', 'amount'],
+        'add_virtual_funds' => [],
         'convert_currency' => [
             'from_currency',
             'to_currency',
@@ -174,8 +174,7 @@ try {
     }
 
 
-    if ($requestType === 'add_virtual_funds' ||
-        $requestType === 'convert_currency') {
+    if ($requestType === 'convert_currency') {
 
         $enteredAmount = $outgoingMessage['amount'] ?? '';
 
