@@ -8,6 +8,7 @@ require_once('login.php.inc');
 require_once('stockDB.php.inc');
 require_once('tradingDB.php.inc');
 require_once('currencyDB.php.inc');
+require_once('recommendationDB.php.inc');
 
 function requestProcessor($request)
 {
@@ -173,6 +174,11 @@ function requestProcessor($request)
             case "get_portfolio":
                 $tradingDb = new tradingDB();
                 return $tradingDb->getPortfolio(
+                    $request["sessionId"] ?? ""
+                );
+            case "get_recommendations":
+                $recommendationDb = new recommendationDB();
+                return $recommendationDb->getRecommendations(
                     $request["sessionId"] ?? ""
                 );
 
