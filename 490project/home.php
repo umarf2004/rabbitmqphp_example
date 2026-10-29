@@ -56,15 +56,15 @@ $name = htmlspecialchars($response["first_name"]) ." ". htmlspecialchars($respon
             Welcome <?php echo $name; ?>
         </h1>
 
+         <p>
+            Login successful.
+        </p>
+
         <form id="stockSearchForm" action="stocks.php" method="GET">
         <input id="stockSymbol" name="ticker" type="text" placeholder="Search stock symbol, e.g. AAPL" required>
             <button type="submit"> Search </button>
             <p id="searchMessage"></p>
         </form>
-
-        <p>
-            Login successful.
-        </p>
 
         <a href="currency.php">My Currency Wallet</a>
         <br><br>
