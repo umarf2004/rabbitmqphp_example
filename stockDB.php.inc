@@ -309,4 +309,154 @@ class stockDB
             ];
         }
     }
+// Synchronize real historical stock prices from the DMZ.
+public function syncStockHistory($ticker)
+{
+    $ticker = $this->normalizeTicker($ticker);
+
+    if ($ticker === null) {
+        return ["success" => false, "message" => "Invalid stock ticker"];
+    }
+
+    $stmt = $this->db->prepare(
+        "SELECT id FROM stocks WHERE symbol = ?"
+    );
+    $stmt->bind_param("s", $ticker);
+    $stmt->execute();
+    $stock = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$stock) {
+        return ["success" => false, "message" => "Stock not found"];
+    }
+
+    require_once __DIR__ . "/path.inc";
+    require_once __DIR__ . "/get_host_info.inc";
+    require_once __DIR__ . "/rabbitMQLib.inc";
+
+    try {
+        $client = new rabbitMQClient(
+            __DIR__ . "/rabbitmq.local.ini",
+            "massiveWorker"
+        );
+
+        $response = $client->send_request([
+            "type" => "fetch_stock_history",
+            "ticker" => $ticker
+        ], 20);
+
+        if (
+            !is_array($response) ||
+            empty($response["success"]) ||
+            empty($response["history"]) ||
+            !is_array($response["history"])
+        ) {
+            return [
+                "success" => false,
+                "message" => "Historical stock data unavailable"
+            ];
+        }
+
+        $rows = [];
+
+        foreach ($response["history"] as $entry) {
+            $price = $entry["price"] ?? null;
+            $recordedAt = $entry["recorded_at"] ?? null;
+
+            if (
+                !is_numeric($price) ||
+                !is_finite((float) $price) ||
+                (float) $price <= 0 ||
+                !is_string($recordedAt) ||
+                !preg_match(
+                    '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+                    $recordedAt
+                )
+            ) {
+                continue;
+            }
+
+            $rows[] = [
+                "price" => (float) $price,
+                "recorded_at" => $recordedAt
+            ];
+        }
+
+        if (count($rows) < 5) {
+            return [
+                "success" => false,
+                "message" => "Insufficient historical stock data"
+            ];
+        }
+
+        usort(
+            $rows,
+            fn($a, $b) => strcmp(
+                $a["recorded_at"],
+                $b["recorded_at"]
+            )
+        );
+
+        $stockId = (int) $stock["id"];
+
+        $this->db->begin_transaction();
+
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO stock_price_history
+                    (stock_id, price, recorded_at)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE price = VALUES(price)"
+            );
+
+            foreach ($rows as $row) {
+                $stmt->bind_param(
+                    "ids",
+                    $stockId,
+                    $row["price"],
+                    $row["recorded_at"]
+                );
+                $stmt->execute();
+            }
+
+            $stmt->close();
+
+            $latest = end($rows);
+
+            $stmt = $this->db->prepare(
+                "UPDATE stocks
+                 SET current_price = ?, last_updated = NOW()
+                 WHERE id = ?"
+            );
+            $stmt->bind_param(
+                "di",
+                $latest["price"],
+                $stockId
+            );
+            $stmt->execute();
+            $stmt->close();
+
+            $this->db->commit();
+
+            return [
+                "success" => true,
+                "ticker" => $ticker,
+                "saved_prices" => count($rows),
+                "latest_price" => $latest["price"]
+            ];
+
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
+
+    } catch (Throwable $e) {
+        error_log("Stock history sync failed: " . $e->getMessage());
+
+        return [
+            "success" => false,
+            "message" => "Unable to synchronize stock history"
+        ];
+    }
+}
 }

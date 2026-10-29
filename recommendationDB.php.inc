@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . "/login.php.inc";
+require_once __DIR__ . "/stockDB.php.inc";
 
 class recommendationDB
 {
@@ -91,10 +92,26 @@ class recommendationDB
         )->fetch_all(MYSQLI_ASSOC);
 
         $recommendations = [];
+$stockDb = new stockDB();
 
-        foreach ($stocks as $stock) {
-            $stockId = (int) $stock["id"];
-            $symbol = $stock["symbol"];
+foreach ($stocks as $stock) {
+    $stockId = (int) $stock["id"];
+    $symbol = $stock["symbol"];
+
+    // Retrieve real historical prices from Massive through RabbitMQ.
+    $syncResult = $stockDb->syncStockHistory($symbol);
+
+    if (empty($syncResult["success"])) {
+        error_log(
+            "Recommendation history sync failed for " . $symbol .
+            ": " . ($syncResult["message"] ?? "Unknown error")
+        );
+        continue;
+    }
+
+    // Use the newly synchronized closing price.
+    $stock["current_price"] = $syncResult["latest_price"];
+    $stock["last_updated"] = date("Y-m-d H:i:s");
 
             $stmt = $this->db->prepare(
                 "SELECT price, recorded_at
