@@ -181,8 +181,12 @@ function requestProcessor($request)
                 return $recommendationDb->getRecommendations(
                     $request["sessionId"] ?? ""
                 );
-
-            case "get_trade_history":
+            case "get_portfolio_history":
+               $tradingDb = new tradingDB();
+               return $tradingDb->getPortfolioHistory(
+	            $request["sessionId"] ?? ""
+                );           
+	    case "get_trade_history":
                 $tradingDb = new tradingDB();
                 return $tradingDb->getTradeHistory(
                     $request["sessionId"] ?? ""

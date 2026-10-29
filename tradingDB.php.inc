@@ -439,7 +439,35 @@ class tradingDB
             $newBalance = $stmt->get_result()->fetch_assoc()["balance"];
             $stmt->close();
 
-            $this->db->commit();
+// Create a notification for the completed trade.
+$notificationMessage = sprintf(
+    "%s %s shares of %s at $%s per share.",
+    $type === "BUY" ? "Purchased" : "Sold",
+    $quantity,
+    $symbol,
+    $price
+);
+
+$notificationType = "trade_executed";
+
+$stmt = $this->db->prepare(
+    "INSERT INTO notifications
+        (user_id, trade_id, notification_type, message)
+     VALUES (?, ?, ?, ?)"
+);
+
+$stmt->bind_param(
+    "iiss",
+    $userId,
+    $tradeId,
+    $notificationType,
+    $notificationMessage
+);
+
+$stmt->execute();
+$stmt->close();
+
+$this->db->commit();
 
             return [
                 "success" => true,
@@ -584,4 +612,51 @@ class tradingDB
             ];
         }
     }
+
+public function getPortfolioHistory($sessionId)
+{
+    $userId = $this->authenticate($sessionId);
+
+    if ($userId === null) {
+        return [
+            "success" => false,
+            "message" => "Invalid session"
+        ];
+    }
+
+    try {
+        $stmt = $this->db->prepare(
+            "SELECT
+                DATE(recorded_at) AS date,
+                total_value_usd AS value_usd
+             FROM portfolio_history
+             WHERE user_id = ?
+             ORDER BY recorded_at ASC, id ASC"
+        );
+
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+
+        $history = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $stmt->close();
+
+        return [
+            "success" => true,
+            "history" => $history
+        ];
+
+    } catch (Throwable $error) {
+        error_log(
+            "Portfolio history error: " . $error->getMessage()
+        );
+
+        return [
+            "success" => false,
+            "message" => "Unable to retrieve portfolio history"
+        ];
+    }
+}
+
+    
 }
