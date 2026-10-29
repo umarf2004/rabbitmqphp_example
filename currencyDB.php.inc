@@ -150,8 +150,8 @@ class currencyDB
 
             $response = $client->send_request([
                 "type" => "get_fx_rate",
-                "base" => $from,
-                "quote" => $to
+                "from" => $from,
+                "to" => $to
             ], 20);
 
             if (!is_array($response) || empty($response["success"])) {
@@ -161,22 +161,10 @@ class currencyDB
                 ];
             }
 
-            /*
-             * Expected DMZ response:
-             * {
-             *   "success": true,
-             *   "base": "USD",
-             *   "quote": "JPY",
-             *   "rate": "150.12345678",
-             *   "rate_date": "YYYY-MM-DD"
-             * }
-             *
-             * Confirm this contract with the DMZ teammate.
-             */
             if (
-                ($response["base"] ?? null) !== $from ||
-                ($response["quote"] ?? null) !== $to ||
-                !isset($response["rate"], $response["rate_date"])
+                ($response["from"] ?? null) !== $from ||
+                ($response["to"] ?? null) !== $to ||
+                !isset($response["rate"], $response["fetched_at"])
             ) {
                 return [
                     "success" => false,
@@ -185,13 +173,17 @@ class currencyDB
             }
 
             $rate = (string) $response["rate"];
-            $rateDate = $response["rate_date"];
+            $fetchedAt = $response["fetched_at"];
 
             if (
-                !preg_match('/^\d{1,10}(?:\.\d{1,8})?$/', $rate) ||
-                !preg_match('/[1-9]/', $rate) ||
-                !is_string($rateDate) ||
-                !preg_match('/^\d{4}-\d{2}-\d{2}$/', $rateDate)
+                !is_numeric($rate) ||
+                !is_finite((float) $rate) ||
+                (float) $rate <= 0 ||
+                !is_string($fetchedAt) ||
+                !preg_match(
+                    '/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/',
+                    $fetchedAt
+                )
             ) {
                 return [
                     "success" => false,
@@ -199,18 +191,19 @@ class currencyDB
                 ];
             }
 
-            // Do not execute trades using stale or future-dated rates.
-            $today = new DateTimeImmutable("today");
-            $quotedDate = DateTimeImmutable::createFromFormat(
-                "!Y-m-d",
-                $rateDate
+            $timestamp = DateTimeImmutable::createFromFormat(
+                '!Y-m-d\\TH:i:s\\Z',
+                $fetchedAt,
+                new DateTimeZone("UTC")
             );
 
+            $now = new DateTimeImmutable("now", new DateTimeZone("UTC"));
+
             if (
-                $quotedDate === false ||
-                $quotedDate->format("Y-m-d") !== $rateDate ||
-                $quotedDate > $today ||
-                $quotedDate < $today->modify("-4 days")
+                $timestamp === false ||
+                $timestamp->format("Y-m-d\\TH:i:s\\Z") !== $fetchedAt ||
+                $timestamp > $now->modify("+5 minutes") ||
+                $timestamp < $now->modify("-4 days")
             ) {
                 return [
                     "success" => false,
@@ -221,10 +214,11 @@ class currencyDB
             return [
                 "success" => true,
                 "rate" => $rate,
-                "rate_date" => $rateDate
+                "rate_date" => $timestamp->format("Y-m-d")
             ];
+
         } catch (Throwable $error) {
-            error_log("Currency DMZ request failed");
+            error_log("Currency DMZ request failed: " . $error->getMessage());
 
             return [
                 "success" => false,
