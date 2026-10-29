@@ -641,11 +641,6 @@ public function getPortfolioHistory($sessionId)
 
         $stmt->close();
 
-        return [
-            "success" => true,
-            "history" => $history
-        ];
-
     } catch (Throwable $error) {
         error_log(
             "Portfolio history error: " . $error->getMessage()
