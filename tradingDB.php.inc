@@ -639,7 +639,12 @@ public function getPortfolioHistory($sessionId)
 
         $history = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        $stmt->close();
+	$stmt->close();
+
+	return [
+            "success" => true,
+            "history" => $history
+      ];
 
     } catch (Throwable $error) {
         error_log(
