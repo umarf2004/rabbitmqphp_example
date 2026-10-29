@@ -6,12 +6,18 @@ require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
 require_once('login.php.inc');
 require_once('stockDB.php.inc');
+require_once('tradingDB.php.inc');
+require_once('currencyDB.php.inc');
 
 function requestProcessor($request)
 {
+    // Log only the request type, never passwords or session tokens.
     echo PHP_EOL;
-    echo "Received request:" . PHP_EOL;
-    print_r($request);
+    echo "Received request type: "
+        . (is_array($request) && is_string($request["type"] ?? null)
+            ? $request["type"]
+            : "unknown")
+        . PHP_EOL;
 
     if (!isset($request["type"])) {
         return [
@@ -89,6 +95,86 @@ function requestProcessor($request)
 
     return $result;
 
+
+            case "get_wallet":
+                $tradingDb = new tradingDB();
+                return $tradingDb->getWallet(
+                    $request["sessionId"] ?? ""
+                );
+
+            case "buy_stock":
+                $tradingDb = new tradingDB();
+                return $tradingDb->buyStock(
+                    $request["sessionId"] ?? "",
+                    $request["ticker"] ?? "",
+                    $request["quantity"] ?? ""
+                );
+
+            case "sell_stock":
+                $tradingDb = new tradingDB();
+                return $tradingDb->sellStock(
+                    $request["sessionId"] ?? "",
+                    $request["ticker"] ?? "",
+                    $request["quantity"] ?? ""
+                );
+
+            case "get_wallets":
+                $currencyDb = new currencyDB();
+                return $currencyDb->getWallets(
+                    $request["sessionId"] ?? ""
+                );
+
+            case "get_currency_transactions":
+                $currencyDb = new currencyDB();
+                return $currencyDb->getCurrencyTransactions(
+                    $request["sessionId"] ?? ""
+                );
+
+            case "convert_currency":
+                $currencyDb = new currencyDB();
+                return $currencyDb->convertCurrency(
+                    $request["sessionId"] ?? "",
+                    $request["from_currency"] ?? "",
+                    $request["to_currency"] ?? "",
+                    $request["amount"] ?? ""
+                );
+
+            case "execute_trade":
+                $side = strtoupper(trim((string) ($request["side"] ?? "")));
+                $symbol = $request["symbol"] ?? "";
+                $quantity = $request["quantity"] ?? "";
+                $sessionId = $request["sessionId"] ?? "";
+
+                $tradingDb = new tradingDB();
+
+                if ($side === "BUY") {
+                    return $tradingDb->buyStock(
+                        $sessionId, $symbol, $quantity
+                    );
+                }
+
+                if ($side === "SELL") {
+                    return $tradingDb->sellStock(
+                        $sessionId, $symbol, $quantity
+                    );
+                }
+
+                return [
+                    "success" => false,
+                    "message" => "Invalid trade side"
+                ];
+
+            case "get_portfolio":
+                $tradingDb = new tradingDB();
+                return $tradingDb->getPortfolio(
+                    $request["sessionId"] ?? ""
+                );
+
+            case "get_trade_history":
+                $tradingDb = new tradingDB();
+                return $tradingDb->getTradeHistory(
+                    $request["sessionId"] ?? ""
+                );
 
             default:
                 return [

@@ -500,16 +500,9 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT COUNT(*)
-    INTO v_wallet_count
-    FROM wallets
-    WHERE user_id = p_user_id
-      AND currency = p_to_currency;
-
-    IF v_wallet_count = 0 THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Destination wallet does not exist';
-    END IF;
+    INSERT INTO wallets (user_id, currency, balance)
+    VALUES (p_user_id, p_to_currency, 0)
+    ON DUPLICATE KEY UPDATE id = id;
 
     UPDATE wallets
     SET balance = balance - p_amount

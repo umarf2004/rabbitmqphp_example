@@ -112,6 +112,9 @@ class loginDB
             PASSWORD_DEFAULT
         );
 
+        // Start a transaction so user and wallet are created together
+        $this->logindb->begin_transaction();
+
         $stmt = $this->logindb->prepare(
             "INSERT INTO users
              (
@@ -134,20 +137,51 @@ class loginDB
         );
 
         if (!$stmt->execute()) {
-            return [
-                "success" => false,
-                "message" => "Registration failed: " . $stmt->error
-            ];
-        }
+    $error = $stmt->error;
+    $stmt->close();
+    $this->logindb->rollback();
 
+    return [
+        "success" => false,
+        "message" => "Registration failed: " . $error
+    ];
+}
+
+        // Get the ID of the newly registered user
+        $userId = $this->logindb->insert_id;
         $stmt->close();
 
-        return [
-            "success" => true,
-            "message" => "Registration successful"
-        ];
-    }
+        // Create a virtual USD wallet with $10,000
+        $walletStmt = $this->logindb->prepare(
+            "INSERT INTO wallets (user_id, currency, balance)
+             VALUES (?, 'USD', 10000.00)"
+        );
 
+        $walletStmt->bind_param("i", $userId);
+
+        if (!$walletStmt->execute()) {
+            $error = $walletStmt->error;
+            $walletStmt->close();
+            $this->logindb->rollback();
+
+            return [
+                "success" => false,
+                "message" => "Wallet creation failed: " . $error
+            ];
+         }
+
+         $walletStmt->close();
+
+         // Save the new user and wallet together
+         $this->logindb->commit();
+
+         return [
+             "success" => true,
+             "message" => "Registration successful",
+             "starting_balance" => 10000.00,
+             "currency" => "USD"
+         ];
+      }
 
     // ---------------------------------------------------
     // LOGIN
@@ -289,6 +323,7 @@ class loginDB
         return [
             "success" => true,
             "message" => "Session valid",
+            "user_id" => (int) $user["id"],
             "username" => $user["username"],
             "first_name" => $user["first_name"],
             "last_name" => $user["last_name"]
