@@ -196,7 +196,20 @@ class tradingDB
         try {
             $this->db->begin_transaction();
 
-            // Lock the user's USD wallet first.
+            // Serialize trades and virtual-fund refills for this user.
+            $stmt = $this->db->prepare(
+                "SELECT id FROM users WHERE id = ? FOR UPDATE"
+            );
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $lockedUser = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$lockedUser) {
+                throw new DomainException("User not found");
+            }
+
+            // Lock the USD wallet after the user record.
             // All trades for this user will acquire locks in this order.
             $stmt = $this->db->prepare(
                 "SELECT balance

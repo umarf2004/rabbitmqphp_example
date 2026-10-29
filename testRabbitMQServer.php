@@ -124,6 +124,12 @@ function requestProcessor($request)
                     $request["sessionId"] ?? ""
                 );
 
+            case "add_virtual_funds":
+                $currencyDb = new currencyDB();
+                return $currencyDb->refillVirtualFunds(
+                    $request["sessionId"] ?? ""
+                );
+
             case "get_currency_transactions":
                 $currencyDb = new currencyDB();
                 return $currencyDb->getCurrencyTransactions(

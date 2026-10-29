@@ -318,4 +318,64 @@ class currencyDB
             ];
         }
     }
+    public function refillVirtualFunds($sessionId): array
+    {
+        $session = $this->authenticate($sessionId);
+
+        if (empty($session["success"])) {
+            return $session;
+        }
+
+        $userId = (int) $session["user_id"];
+
+        try {
+            $stmt = $this->db->prepare(
+                "CALL refill_virtual_funds(?)"
+            );
+
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+
+            $result = $stmt->get_result();
+            $refill = $result->fetch_assoc();
+            $result->free();
+            $stmt->close();
+
+            // Clear remaining stored-procedure result sets.
+            while ($this->db->more_results()) {
+                $this->db->next_result();
+                $extra = $this->db->store_result();
+
+                if ($extra !== false) {
+                    $extra->free();
+                }
+            }
+
+            if (!$refill) {
+                return [
+                    "success" => false,
+                    "message" => "Refill result unavailable"
+                ];
+            }
+
+            return [
+                "success" => true,
+                "message" => (float) $refill["amount_added"] > 0
+                    ? "Virtual funds refilled successfully"
+                    : "Account value is already at least $10,000",
+                "user_id" => $userId,
+                "account_value_before" => $refill["account_value_before"],
+                "amount_added" => $refill["amount_added"],
+                "account_value_after" => $refill["account_value_after"]
+            ];
+        } catch (mysqli_sql_exception $error) {
+            error_log("Virtual funds refill database operation failed");
+
+            return [
+                "success" => false,
+                "message" => "Refill unavailable: check current stock prices and exchange rates"
+            ];
+        }
+    }
+
 }
