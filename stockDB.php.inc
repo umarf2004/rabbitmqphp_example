@@ -360,8 +360,14 @@ public function syncStockHistory($ticker)
         $rows = [];
 
         foreach ($response["history"] as $entry) {
-            $price = $entry["price"] ?? null;
+            $price = $entry["price"] ?? $entry["close"] ?? null;
             $recordedAt = $entry["recorded_at"] ?? null;
+
+            if ($recordedAt === null && isset($entry["date"]) &&
+                is_string($entry["date"]) &&
+                preg_match('/^\d{4}-\d{2}-\d{2}$/', $entry["date"])) {
+                $recordedAt = $entry["date"] . " 00:00:00";
+            }
 
             if (
                 !is_numeric($price) ||
