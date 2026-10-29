@@ -4,7 +4,7 @@
 </section>
 
 
-<script src="api.js"></script><scriipt src="charts.js"></script><script>
+<script src="api.js"></script><script src="charts.js"></script><script>
 let portfolioHistory = [];
 
 async function drawHistory() {

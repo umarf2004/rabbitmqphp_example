@@ -26,8 +26,8 @@ async function loadPortfolio() {
         $('count').textContent = positions.length;
 
         renderTable('holdings', [
-            ['Symbol', 'symbol'], ['Shares', 'quantity'], ['Avg. cost', 'average_cost'],
-            ['Price', 'current_price'], ['Value', 'market_value']
+            ['Stock Symbols', 'ticker'], ['Shares', 'shares'], ['Average cost', 'average_buy_price'],
+            ['Current Price', 'current_price'], ['Market Value', 'market_value']
         ], positions);
         renderTable('wallets', [
             ['Currency', 'currency'], ['Balance', 'balance']

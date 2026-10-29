@@ -44,35 +44,6 @@ site_begin('Stock Browser & Search');
 </section>
 
 <section class="panel">
-    <h2>Virtual Trading</h2>
-    <p>Buy or sell stocks using your virtual funds.</p>
-
-    <div class="flex">
-        <label>
-            Number of Shares
-            <input
-                id="tradeQuantity"
-                type="number"
-                min="1"
-                max="999999"
-                step="1"
-                value="1"
-                required
-            >
-        </label>
-
-        <button type="button" id="buyButton">
-            Buy Stock
-        </button>
-
-        <button type="button" id="sellButton">
-            Sell Stock
-        </button>
-    </div>
-    <p id="tradeMessage"></p>
-</section>
-
-<section class="panel">
     <h2>Stock Price History</h2>
     <div id="chart">Search for a stock to view historical prices.</div>
     <p id="historyInfo" class="note"></p>
@@ -338,84 +309,25 @@ $('searchForm').addEventListener('submit', async function (event) {
     }
 });
 
-
-
-// Handle virtual stock trading
-async function executeTrade(side) {
-
-    const ticker = $('ticker').value.trim().toUpperCase();
-    const quantity = $('tradeQuantity').value.trim();
-
-    if (stockSearchRunning) {
-        $('tradeMessage').textContent =
-            'Please wait for the stock search to finish.';
-        return;
-    }
-
-    if (!validStockSymbol(ticker)) {
-        $('tradeMessage').textContent =
-            'Please search for a valid stock first.';
-        return;
-    }
-
-    if (!/^[1-9][0-9]{0,5}$/.test(quantity)) {
-        $('tradeMessage').textContent =
-            'Please enter a valid whole number of shares.';
-        return;
-    }
-
-    $('buyButton').disabled = true;
-    $('sellButton').disabled = true;
-
-    $('tradeMessage').textContent = 'Processing trade...';
-
-    try {
-        const response = await rpc('execute_trade', {
-            symbol: ticker,
-            side: side,
-            quantity: quantity
-        });
-
-        $('tradeMessage').textContent =
-            response.message +
-            ' | Remaining balance: ' +
-            formatMoney(response.balance);
-
-    } catch (error) {
-        $('tradeMessage').textContent =
-            'Trade failed: ' + error.message;
-
-    } finally {
-        $('buyButton').disabled = false;
-        $('sellButton').disabled = false;
-    }
-}
-
-
-// BUY button
-$('buyButton').addEventListener('click', function () {
-    executeTrade('BUY');
-});
-
-
-// SELL button
-$('sellButton').addEventListener('click', function () {
-    executeTrade('SELL');
-});
-
-// Only load a stock when a ticker is provided in the URL.
-
 const pageParams = new URLSearchParams(window.location.search);
 const tickerFromHome = pageParams.get('ticker');
 
 if (tickerFromHome) {
+
     const startingSymbol = tickerFromHome.trim().toUpperCase();
 
     if (validStockSymbol(startingSymbol)) {
+
         $('ticker').value = startingSymbol;
-        showStock(startingSymbol).catch(error => showError('company', error));
+
+        showStock(startingSymbol).catch(error =>
+            showError('company', error)
+        );
+
     } else {
+
         $('company').textContent = 'Invalid stock symbol in URL.';
+
     }
 }
 
