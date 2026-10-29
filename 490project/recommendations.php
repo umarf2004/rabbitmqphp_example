@@ -1,5 +1,5 @@
 <?php require_once __DIR__.'/layout.php';site_begin('Trade Recommendations'); ?>
-<p class="note">Rule-based educational suggestions, not guaranteed profits or financial advice. No automatic stock orders.</p>
+<p class="note">Suggestions not guaranteed profits or financial advice. No automatic stock orders.</p>
 
 <section class="panel"><button id="reload">Recalculate recommendations</button><div class="scroll" id="recommendations"></div><p id="status"></p></section>
 
