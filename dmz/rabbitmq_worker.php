@@ -55,14 +55,11 @@ function massiveRequestProcessor($request)
         // Retrieve historical stock prices
         case "fetch_stock_history":
 
-            echo "Fetching stock history...\n";
+    echo "Fetching stock history...\n";
 
-            $result = [
-                "success" => false,
-                "error" => "Stock history is not implemented yet"
-            ];
+    $result = fetchStockHistory($ticker);
 
-            break;
+    break;
 
         // Retrieve currency exchange rates
         case "get_fx_rate":
