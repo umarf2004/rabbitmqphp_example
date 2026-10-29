@@ -65,7 +65,7 @@ class stockDB
                 company_name,
                 current_price,
                 last_updated,
-                (last_updated >= NOW() - INTERVAL 24 HOUR) AS is_fresh
+                (last_updated >= NOW() - INTERVAL 5 MINUTE) AS is_fresh
              FROM stocks
              WHERE symbol = ?"
         );
@@ -129,6 +129,16 @@ class stockDB
                 "type" => "fetch_stock",
                 "ticker" => $ticker
             ], 20);
+             error_log("DMZ COMPANY RESPONSE: " . json_encode($companyResponse));
+
+// Normalize DMZ response to the format expected by this function.
+if (
+    is_array($companyResponse) &&
+    !isset($companyResponse["data"]) &&
+    isset($companyResponse["name"])
+) {
+    $companyResponse["data"] = $companyResponse;
+}
 
             if (
                 !is_array($companyResponse) ||
@@ -202,7 +212,7 @@ class stockDB
             return $cached;
         }
 
-        // Return cached data if it is less than 24 hours old
+        // Return cached data if it is less than 5 minutes old
         if ($cached["found"] && $cached["fresh"]) {
             return [
                 "success" => true,
@@ -330,6 +340,33 @@ public function syncStockHistory($ticker)
         return ["success" => false, "message" => "Stock not found"];
     }
 
+    $stockId = (int) $stock["id"];
+
+    // Reuse historical prices fetched within the last five minutes.
+    $stmt = $this->db->prepare(
+        "SELECT h.price
+         FROM stock_history_cache c
+         JOIN stock_price_history h ON h.stock_id = c.stock_id
+         WHERE c.stock_id = ?
+           AND c.last_fetched_at >= NOW() - INTERVAL 5 MINUTE
+         ORDER BY h.recorded_at DESC
+         LIMIT 5"
+    );
+    $stmt->bind_param("i", $stockId);
+    $stmt->execute();
+    $cachedPrices = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    if (count($cachedPrices) === 5) {
+        return [
+            "success" => true,
+            "ticker" => $ticker,
+            "source" => "cache",
+            "saved_prices" => 5,
+            "latest_price" => (float) $cachedPrices[0]["price"]
+        ];
+    }
+
     require_once __DIR__ . "/path.inc";
     require_once __DIR__ . "/get_host_info.inc";
     require_once __DIR__ . "/rabbitMQLib.inc";
@@ -429,16 +466,14 @@ public function syncStockHistory($ticker)
 
             $latest = end($rows);
 
+            // Record when historical prices were successfully fetched.
+            // Do not overwrite the stock price used by the Trade page.
             $stmt = $this->db->prepare(
-                "UPDATE stocks
-                 SET current_price = ?, last_updated = NOW()
-                 WHERE id = ?"
+                "INSERT INTO stock_history_cache (stock_id, last_fetched_at)
+                 VALUES (?, NOW())
+                 ON DUPLICATE KEY UPDATE last_fetched_at = NOW()"
             );
-            $stmt->bind_param(
-                "di",
-                $latest["price"],
-                $stockId
-            );
+            $stmt->bind_param("i", $stockId);
             $stmt->execute();
             $stmt->close();
 
