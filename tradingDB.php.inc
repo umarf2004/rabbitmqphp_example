@@ -549,11 +549,17 @@ $this->db->commit();
 
             $holdings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
+            $totalValueUsd = 0;
+
+            foreach ($holdings as $holding) {
+                $totalValueUsd += (float) $holding["market_value"];
+           }
 
             return [
                 "success" => true,
                 "user_id" => $userId,
-                "holdings" => $holdings,
+		"holdings" => $holdings,
+                "total_value_usd" => round($totalValueUsd, 2),
                 "valuation_note" =>
                     "Values use stored stock prices, which may be delayed"
             ];
