@@ -65,7 +65,7 @@ class stockDB
                 company_name,
                 current_price,
                 last_updated,
-                (last_updated >= NOW() - INTERVAL 24 HOUR) AS is_fresh
+                (last_updated >= NOW() - INTERVAL 5 MINUTE) AS is_fresh
              FROM stocks
              WHERE symbol = ?"
         );
@@ -129,6 +129,16 @@ class stockDB
                 "type" => "fetch_stock",
                 "ticker" => $ticker
             ], 20);
+             error_log("DMZ COMPANY RESPONSE: " . json_encode($companyResponse));
+
+// Normalize DMZ response to the format expected by this function.
+if (
+    is_array($companyResponse) &&
+    !isset($companyResponse["data"]) &&
+    isset($companyResponse["name"])
+) {
+    $companyResponse["data"] = $companyResponse;
+}
 
             if (
                 !is_array($companyResponse) ||
@@ -202,7 +212,7 @@ class stockDB
             return $cached;
         }
 
-        // Return cached data if it is less than 24 hours old
+        // Return cached data if it is less than 5 minutes old
         if ($cached["found"] && $cached["fresh"]) {
             return [
                 "success" => true,
@@ -309,4 +319,185 @@ class stockDB
             ];
         }
     }
+// Synchronize real historical stock prices from the DMZ.
+public function syncStockHistory($ticker)
+{
+    $ticker = $this->normalizeTicker($ticker);
+
+    if ($ticker === null) {
+        return ["success" => false, "message" => "Invalid stock ticker"];
+    }
+
+    $stmt = $this->db->prepare(
+        "SELECT id FROM stocks WHERE symbol = ?"
+    );
+    $stmt->bind_param("s", $ticker);
+    $stmt->execute();
+    $stock = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$stock) {
+        return ["success" => false, "message" => "Stock not found"];
+    }
+
+    $stockId = (int) $stock["id"];
+
+    // Reuse historical prices fetched within the last five minutes.
+    $stmt = $this->db->prepare(
+        "SELECT h.price
+         FROM stock_history_cache c
+         JOIN stock_price_history h ON h.stock_id = c.stock_id
+         WHERE c.stock_id = ?
+           AND c.last_fetched_at >= NOW() - INTERVAL 5 MINUTE
+         ORDER BY h.recorded_at DESC
+         LIMIT 5"
+    );
+    $stmt->bind_param("i", $stockId);
+    $stmt->execute();
+    $cachedPrices = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    if (count($cachedPrices) === 5) {
+        return [
+            "success" => true,
+            "ticker" => $ticker,
+            "source" => "cache",
+            "saved_prices" => 5,
+            "latest_price" => (float) $cachedPrices[0]["price"]
+        ];
+    }
+
+    require_once __DIR__ . "/path.inc";
+    require_once __DIR__ . "/get_host_info.inc";
+    require_once __DIR__ . "/rabbitMQLib.inc";
+
+    try {
+        $client = new rabbitMQClient(
+            __DIR__ . "/rabbitmq.local.ini",
+            "massiveWorker"
+        );
+
+        $response = $client->send_request([
+            "type" => "fetch_stock_history",
+            "ticker" => $ticker
+        ], 20);
+
+        if (
+            !is_array($response) ||
+            empty($response["success"]) ||
+            empty($response["history"]) ||
+            !is_array($response["history"])
+        ) {
+            return [
+                "success" => false,
+                "message" => "Historical stock data unavailable"
+            ];
+        }
+
+        $rows = [];
+
+        foreach ($response["history"] as $entry) {
+            $price = $entry["price"] ?? $entry["close"] ?? null;
+            $recordedAt = $entry["recorded_at"] ?? null;
+
+            if ($recordedAt === null && isset($entry["date"]) &&
+                is_string($entry["date"]) &&
+                preg_match('/^\d{4}-\d{2}-\d{2}$/', $entry["date"])) {
+                $recordedAt = $entry["date"] . " 00:00:00";
+            }
+
+            if (
+                !is_numeric($price) ||
+                !is_finite((float) $price) ||
+                (float) $price <= 0 ||
+                !is_string($recordedAt) ||
+                !preg_match(
+                    '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+                    $recordedAt
+                )
+            ) {
+                continue;
+            }
+
+            $rows[] = [
+                "price" => (float) $price,
+                "recorded_at" => $recordedAt
+            ];
+        }
+
+        if (count($rows) < 5) {
+            return [
+                "success" => false,
+                "message" => "Insufficient historical stock data"
+            ];
+        }
+
+        usort(
+            $rows,
+            fn($a, $b) => strcmp(
+                $a["recorded_at"],
+                $b["recorded_at"]
+            )
+        );
+
+        $stockId = (int) $stock["id"];
+
+        $this->db->begin_transaction();
+
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO stock_price_history
+                    (stock_id, price, recorded_at)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE price = VALUES(price)"
+            );
+
+            foreach ($rows as $row) {
+                $stmt->bind_param(
+                    "ids",
+                    $stockId,
+                    $row["price"],
+                    $row["recorded_at"]
+                );
+                $stmt->execute();
+            }
+
+            $stmt->close();
+
+            $latest = end($rows);
+
+            // Record when historical prices were successfully fetched.
+            // Do not overwrite the stock price used by the Trade page.
+            $stmt = $this->db->prepare(
+                "INSERT INTO stock_history_cache (stock_id, last_fetched_at)
+                 VALUES (?, NOW())
+                 ON DUPLICATE KEY UPDATE last_fetched_at = NOW()"
+            );
+            $stmt->bind_param("i", $stockId);
+            $stmt->execute();
+            $stmt->close();
+
+            $this->db->commit();
+
+            return [
+                "success" => true,
+                "ticker" => $ticker,
+                "saved_prices" => count($rows),
+                "latest_price" => $latest["price"]
+            ];
+
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
+
+    } catch (Throwable $e) {
+        error_log("Stock history sync failed: " . $e->getMessage());
+
+        return [
+            "success" => false,
+            "message" => "Unable to synchronize stock history"
+        ];
+    }
+}
 }

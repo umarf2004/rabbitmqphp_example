@@ -1,50 +1,62 @@
-<?php
-require_once  __DIR__ . '/layout.php';
-require_once('/home/umarf/git/rabbitmqphp_example/rabbitMQLib.inc');
-require_once('/home/umarf/git/rabbitmqphp_example/get_host_info.inc');
+<?php require_once __DIR__.'/layout.php';site_begin('My Portfolio'); ?>
 
-site_begin("Portfolio");
+<section class="panel"><div class="flex"><button id="reload">Refresh portfolio</button><label>Display currency<select id="currency"><option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option></select></label></div>
+<div class="grid"><div class="metric">Portfolio value <strong id="total">—</strong></div><div class="metric">Stock holdings <strong id="count">—</strong></div></div><p class="note" id="rateNote"></p></section>
 
-$sessionId = $_COOKIE["auth_token"] ?? "";
-if ($sessionId === "") 
-    {
-        header("Location: index.html");
-        exit;
+
+
+<section class="panel"><h2>Stock holdings</h2>
+<div class="scroll" id="holdings"></div>
+</section>
+
+
+
+<section class="panel"><h2>Virtual currency balances</h2>
+<div class="scroll" id="wallets"></div><p><a href="currency.php">Convert currency →</a></p></section>
+
+
+
+<p id="error"></p><script src="api.js"></script><script>
+let portfolioSnapshot = null;
+
+async function loadPortfolio() {
+    try {
+        portfolioSnapshot = await rpc('get_portfolio');
+        const positions = portfolioSnapshot.holdings || [];
+        $('count').textContent = positions.length;
+
+        renderTable('holdings', [
+            ['Stock Symbols', 'ticker'], ['Shares', 'shares'], ['Average cost', 'average_buy_price'],
+            ['Current Price', 'current_price'], ['Market Value', 'market_value']
+        ], positions);
+        renderTable('wallets', [
+            ['Currency', 'currency'], ['Balance', 'balance']
+        ], portfolioSnapshot.wallets || []);
+
+        await convertDisplay();
+        $('error').textContent = '';
+    } catch (error) {
+        showError('error', error);
     }
-
-$client = new rabbitMQClient
-    (
-        "/home/umarf/git/rabbitmqphp_example/rabbitmq.local.ini", "testServer"
-    ); 
-
-$response = $client->send_request
-([
-    "type" => "validate_session",
-    "sessionId" => $sessionId
-]);
-
-if (empty($response["success"])) {
-    setcookie("auth_token", "", time() - 3600, "/");
-    header("Location: index.html");
-    exit;
 }
-?> 
 
-<!DOCTYPE html>
-<html>
-    <head>
-        <title> My Portfolio</title> 
-    </head>
+async function convertDisplay() {
+    if (!portfolioSnapshot) return;
 
     <body>
         <h1>My Portfolio </h1> 
         <h2>Portfolio Overview  </h2> 
 
-        <p>Total Portfolio Value: --</p>
-        <p>Available Cash: --</p>
-        <p>Total Invested Value: --</p>
-        <p>Total Profit/Loss: --</p>
+    try {
+        const quote = await rpc('get_fx_rate', {base: 'USD', quote: displayCurrency});
+        $('total').textContent = formatMoney(portfolioUSD * Number(quote.rate), displayCurrency);
+        $('rateNote').textContent = `USD/${displayCurrency}: ${quote.rate}, observed ${quote.date || 'date unknown'}`;
+    } catch (error) {
+        showError('rateNote', error);
+    }
+}
 
-        <a href="home.php"> Back to the Dashboard </a>
-    </body>
-</html>
+$('currency').addEventListener('change', () => convertDisplay().catch(error => showError('error', error)));
+$('reload').addEventListener('click', loadPortfolio);
+loadPortfolio();
+</script><?php site_end(); ?>

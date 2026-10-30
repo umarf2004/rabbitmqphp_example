@@ -1,5 +1,4 @@
 <?php require_once __DIR__.'/layout.php';site_begin('Currency Rate Alerts'); ?>
-
 <section class="panel"><h2>Create rate alert</h2>
 <form id="form" class="flex">
 <label>Base<select id="base"><option>USD</option><option>EUR</option><option>GBP</option></select></label>

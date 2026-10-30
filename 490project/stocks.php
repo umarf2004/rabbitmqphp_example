@@ -309,19 +309,25 @@ $('searchForm').addEventListener('submit', async function (event) {
     }
 });
 
-// Only load a stock when a ticker is provided in the URL.
-
 const pageParams = new URLSearchParams(window.location.search);
 const tickerFromHome = pageParams.get('ticker');
 
 if (tickerFromHome) {
+
     const startingSymbol = tickerFromHome.trim().toUpperCase();
 
     if (validStockSymbol(startingSymbol)) {
+
         $('ticker').value = startingSymbol;
-        showStock(startingSymbol).catch(error => showError('company', error));
+
+        showStock(startingSymbol).catch(error =>
+            showError('company', error)
+        );
+
     } else {
+
         $('company').textContent = 'Invalid stock symbol in URL.';
+
     }
 }
 
