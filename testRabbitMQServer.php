@@ -9,6 +9,7 @@ require_once('stockDB.php.inc');
 require_once('tradingDB.php.inc');
 require_once('currencyDB.php.inc');
 require_once('recommendationDB.php.inc');
+require_once('notificationDB.php.inc');
 
 function requestProcessor($request)
 {
@@ -190,6 +191,24 @@ function requestProcessor($request)
                 $tradingDb = new tradingDB();
                 return $tradingDb->getTradeHistory(
                     $request["sessionId"] ?? ""
+                );
+
+            case "get_email_preferences":
+                return (new notificationDB())->getEmailPreferences($request["sessionId"] ?? "");
+
+            case "update_email_preferences":
+                return (new notificationDB())->updateEmailPreferences($request);
+
+            case "send_test_email":
+                return (new notificationDB())->sendTestEmail($request["sessionId"] ?? "");
+
+            case "get_notifications":
+                return (new notificationDB())->getNotifications($request["sessionId"] ?? "");
+
+            case "mark_notification_read":
+                return (new notificationDB())->markNotificationRead(
+                    $request["sessionId"] ?? "",
+                    $request["notification_id"] ?? ""
                 );
 
             default:
