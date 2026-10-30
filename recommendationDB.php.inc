@@ -204,11 +204,9 @@ foreach ($stocks as $stock) {
             $quantity = 0;
 
             $reason = sprintf(
-                "Price vs average: %+.2f%%. Overall trend: %+.2f%%. Upward sessions: %d/4. Score: %d.",
-                $changePercent,
-                $trendPercent,
-                $upDays,
-                $score
+                "Price is %.2f%% %s its five-day average.",
+                abs($changePercent),
+                $changePercent >= 0 ? "above" : "below"
             );
 
             if ($score >= 2) {
@@ -220,10 +218,9 @@ foreach ($stocks as $stock) {
 
                 if ($quantity >= 1) {
                     $action = "BUY";
-                    $reason .= " Positive momentum. Purchase fits the 10% cash allocation.";
-                } else {
+                }else {
                     $quantity = 0;
-                    $reason .= " Positive momentum, but the allocated budget cannot afford one share.";
+                    $reason .= " Insufficient funds for the suggested purchase.";
                 }
 
                 
@@ -233,9 +230,6 @@ foreach ($stocks as $stock) {
 
                     // Suggest selling approximately 25% of owned shares.
                     $quantity = max(1, (int) floor($ownedShares * 0.25));
-
-                    $reason .= " Negative momentum. Consider reducing the existing position.";
-
                 } else {
 
                     $reason .= " No actionable trade under the current strategy.";
