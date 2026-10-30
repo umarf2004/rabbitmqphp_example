@@ -43,17 +43,9 @@ async function loadPortfolio() {
 async function convertDisplay() {
     if (!portfolioSnapshot) return;
 
-    const displayCurrency = $('currency').value;
-    const portfolioUSD = Number(portfolioSnapshot.total_value_usd ?? portfolioSnapshot.total_value);
-    if (!Number.isFinite(portfolioUSD)) {
-        throw new Error('VM2 must return total_value_usd in get_portfolio');
-    }
-
-    if (displayCurrency === 'USD') {
-        $('total').textContent = formatMoney(portfolioUSD);
-        $('rateNote').textContent = 'Portfolio base valuation: USD.';
-        return;
-    }
+    <body>
+        <h1>My Portfolio </h1> 
+        <h2>Portfolio Overview  </h2> 
 
     try {
         const quote = await rpc('get_fx_rate', {base: 'USD', quote: displayCurrency});
