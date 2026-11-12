@@ -9,3 +9,6 @@ rabbitmq.local.ini
 .env
 .env.*
 /csrf.key
+
+# Local email worker credentials
+email.env

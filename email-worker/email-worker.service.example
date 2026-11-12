@@ -1,0 +1,16 @@
+[Unit]
+Description=IT490 Email Delivery Worker (VM3)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=REPLACE_WITH_VM3_USERNAME
+WorkingDirectory=/home/REPLACE_WITH_VM3_USERNAME/it490-email
+EnvironmentFile=/home/REPLACE_WITH_VM3_USERNAME/it490-email/email.env
+ExecStart=/home/REPLACE_WITH_VM3_USERNAME/.venvs/it490-email/bin/python /home/REPLACE_WITH_VM3_USERNAME/it490-email/email_worker.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

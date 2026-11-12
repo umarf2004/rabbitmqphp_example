@@ -158,11 +158,20 @@ foreach ($stocks as $stock) {
             if ($currentPrice <= 0 || $average <= 0) {
                 continue;
             }
-
+            //average is the five day average
             $changePercent = (($currentPrice - $average) / $average) * 100;
+            $oldestPrice = $prices[count($prices) - 1];
 
-            $ownedShares = 0.0;
+            $trendPercent = (($currentPrice - $oldestPrice) / $oldestPrice) * 100;
 
+            // how many times the stock price wen up
+            $upDays = 0;
+            for ($i = 0; $i < count($prices) - 1; $i++) {
+                if ($prices[$i] > $prices[$i + 1]) {
+                    $upDays++;
+                }
+            }   
+            $ownedShares = 0;
             foreach ($holdings as $holding) {
                 if ($holding["symbol"] === $symbol) {
                     $ownedShares = (float) $holding["shares"];
@@ -170,37 +179,61 @@ foreach ($stocks as $stock) {
                 }
             }
 
+            //calculate scrore based on change
+            $score = 0;
+            if ($changePercent >= 0.5) {
+                $score++;
+            } elseif ($changePercent <= -0.5) {
+                $score--;
+            }
+
+            if ($trendPercent >= 0.25) {
+                $score++;
+            } elseif ($trendPercent <= -0.25) {
+                $score--;
+            }
+            // if the price went up more than 3 days, increases score
+            if ($upDays >= 3) {
+                $score++;
+            } elseif ($upDays <= 1) {
+                $score--;
+            }
+
+            // Default recommendation to hold
             $action = "HOLD";
             $quantity = 0;
-            $reason = "Price is close to its recent five-price average.";
 
-            if ($changePercent >= 2 && $usdBalance >= $currentPrice) {
-                $quantity = (int) floor(
-                    ($usdBalance * 0.10) / $currentPrice
-                );
+            $reason = sprintf(
+                "Price is %.2f%% %s its five-day average.",
+                abs($changePercent),
+                $changePercent >= 0 ? "above" : "below"
+            );
 
-                if ($quantity > 0) {
+            if ($score >= 2) {
+
+                //use no more than 10% of your budget on it
+                $budget = $usdBalance * 0.10;
+
+                $quantity = (int) floor($budget / $currentPrice);
+
+                if ($quantity >= 1) {
                     $action = "BUY";
-                    $reason = sprintf(
-                        "Price is %.2f%% above its recent average.",
-                        $changePercent
-                    );
-                }
-            } elseif ($changePercent <= -2 && $ownedShares > 0) {
-                $action = "SELL";
-                $quantity = (int) floor($ownedShares * 0.25);
-
-                if ($quantity < 1) {
-                    $action = "HOLD";
+                }else {
                     $quantity = 0;
-                    $reason = "Downward trend detected, but holdings are too small for the suggested sale.";
-                } else {
-                    $reason = sprintf(
-                        "Price is %.2f%% below its recent average.",
-                        abs($changePercent)
-                    );
+                    $reason .= " Insufficient funds for the suggested purchase.";
                 }
-            }
+
+                
+                } elseif ($score <= -2 && $ownedShares >= 1) {
+
+                    $action = "SELL";
+
+                    // Suggest selling approximately 25% of owned shares.
+                    $quantity = max(1, (int) floor($ownedShares * 0.25));
+                } else {
+
+                    $reason .= " No actionable trade under the current strategy.";
+                }
 
             $recommendations[] = [
                 "symbol" => $symbol,
