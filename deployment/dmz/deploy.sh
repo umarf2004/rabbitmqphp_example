@@ -13,8 +13,77 @@ EMAIL_DIR="/opt/it490/email-worker"
 # Where deployment backups are stored
 BACKUP_DIR="/opt/it490/deployments/dmz/backups"
 
+DEPLOYMENT_STARTED=false
+
 echo "IT490 DMZ Deployment System"
 echo "---------------------------"
+
+# Restore the previous application files if deployment fails
+rollback() {
+    echo ""
+    echo "Deployment failed. Starting automatic rollback..."
+
+    local failed=0
+
+    sudo cp -a "$CURRENT_BACKUP/massive_worker.php" \
+	"$MASSIVE_DIR/massive_worker.php" || failed=1
+
+    sudo cp -a "$CURRENT_BACKUP/rabbitmq_worker.php" \
+	"$MASSIVE_DIR/rabbitmq_worker.php" || failed=1
+
+    sudo cp -a "$CURRENT_BACKUP/email_worker.py" \
+	"$EMAIL_DIR/email_worker.py" || failed=1
+
+    if [ "$failed" -ne 0 ]; then
+	echo "ERROR: One or more application files could not be restored."
+	return 1
+    fi
+
+    echo "Previous application files restored."
+
+    sudo systemctl restart massive-worker.service || failed=1
+    sudo systemctl restart email-worker.service || failed=1
+
+    echo "Rollback completed. Checking services..."
+
+    sudo systemctl is-active --quiet massive-worker.service || failed=1
+    sudo systemctl is-active --quiet email-worker.service || failed=1
+
+    if [ "$failed" -ne 0 ]; then
+	echo "ERROR: Rollback could not restore both services successfully."
+	return 1
+    fi
+
+    echo "Both services are active after rollback."
+    return 0
+}
+
+# Handle deplyment failure
+deployment_failed() {
+    local exit_code=$?
+
+    trap - ERR
+    set +e
+
+    echo ""
+    echo "ERROR: Deployment failed with exit code $exit_code."
+
+    if [ "$DEPLOYMENT_STARTED" = true ]; then
+	echo "Attempting automatic rollback..."
+
+	if rollback; then
+	    echo "Automatic rollback completed."
+	else
+	    echo "CRITICAL: Automatic rollback failed."
+	    echo "Manual recovery may be required."
+	fi
+    else
+	echo "Deployment did not start installing files."
+	echo "No automatic rollback needed."
+    fi
+
+    exit 1
+}
 
 # Check that the repository exists
 if [ ! -d "$REPO_DIR/.git" ]; then
@@ -61,6 +130,8 @@ STAGING_DIR=$(mktemp -d)
 
 # Remove temporary files when the script exits
 trap 'rm -rf "$STAGING_DIR"' EXIT
+
+trap 'deployment_failed' ERR
 
 echo ""
 echo "Preparing Git version for deloyment..."
@@ -121,7 +192,7 @@ if [ "$DRY_RUN" = true ]; then
     echo "$MASSIVE_DIR/rabbitmq_worker.php"
     echo "$EMAIL_DIR/email_worker.py"
     echo ""
-    echo "No apllication files were changed."
+    echo "No application files were changed."
     exit 0
 fi
 
@@ -152,3 +223,36 @@ done
 
 echo "Backup created successfully!"
 echo "Backup location: $CURRENT_BACKUP"
+
+# Install the selected application verison
+install_application() {
+    echo ""
+    echo "Installing selected Git version..."
+
+    if ! sudo install -o root -g root -m 644 \
+	"$STAGING_DIR/dmz/massive_worker.php" \
+	"$MASSIVE_DIR/massive_worker.php"; then
+
+	echo "ERROR: Failed to install massive_worker.php"
+	return 1
+    fi
+
+    if ! sudo install -o root -g root -m 644 \
+	"$STAGING_DIR/dmz/rabbitmq_worker.php" \
+	"$MASSIVE_DIR/rabbitmq_worker.php"; then
+
+	echo "ERROR: Failed to install rabbitmq_worker.php"
+	return 1
+    fi
+
+    if ! sudo install -o root -g root -m 644 \
+        "$STAGING_DIR/email-worker/email_worker.py" \
+        "$EMAIL_DIR/email_worker.py"; then
+
+	echo "ERROR: Failed to install email_worker.py"
+	return 1
+    fi
+
+    echo "Application files installed successfully."
+    return 0
+}
