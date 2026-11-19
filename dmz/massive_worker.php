@@ -191,7 +191,7 @@ function fetchStockHistory($request)
 
     foreach ($data["results"] ?? [] as $day) {
         if (!isset($day["t"], $day["c"])) {
-	    contiune;
+	    continue;
 	}
 
 	$history[] = [
