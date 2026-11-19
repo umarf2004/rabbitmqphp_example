@@ -256,3 +256,27 @@ install_application() {
     echo "Application files installed successfully."
     return 0
 }
+
+# Mark installation as started so failure trigger rollback
+DEPLOYMENT_STARTED=true
+
+# Install files and explicitly handle installation failure
+if install_application; then
+   echo "Installation completed."
+else
+    false
+fi
+
+echo "Restarting worker services..."
+
+    sudo systemctl restart massive-worker.service
+    sudo systemctl restart email-worker.service
+
+    echo "Checking worker services..."
+
+    sudo systemctl is-active --quiet massive-worker.service
+    sudo systemctl is-active --quiet email-worker.service
+
+echo "Development complete successfully."
+echo "Installed commit: $COMMIT"
+echo "Backup location: $CURRENT_BACKUP"
