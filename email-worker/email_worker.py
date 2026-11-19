@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Consume IT490 email jobs from VM4 RabbitMQ and submit via SMTP on VM3."""
+"""Consume IT490 email jobs from RabbitMQ and submit via SMTP on DMZ."""
 import json
 import logging
 import os

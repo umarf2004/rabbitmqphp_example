@@ -12,3 +12,4 @@ rabbitmq.local.ini
 
 # Local email worker credentials
 email.env
+db.local.ini

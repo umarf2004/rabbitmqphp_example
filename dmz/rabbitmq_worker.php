@@ -74,6 +74,14 @@ function massiveRequestProcessor($request)
         ? "Massive API request successful\n"
         : "Massive API request failed\n";
 
+    if (empty($result["success"])) {
+        echo "Error: " . ($result["error"] ?? "Unknown error") . "\n";
+
+        if (isset($result["http_code"])) {
+            echo "HTTP Code: " . $result["http_code"] . "\n";
+        }
+    }
+
     return $result;
 }
 
